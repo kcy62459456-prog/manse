@@ -278,28 +278,25 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (모바일 스크롤 & 정렬 수정)
+# 5. UI / CSS 스타일링 (다이어트 & 줌아웃 버전)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V4.0", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V4.1", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* 1. 통합 컨테이너: 가로 스크롤 & 중앙 정렬 */
     .total-flex-container {
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        justify-content: center; /* 기본은 중앙 정렬 */
+        justify-content: center;
         gap: 6px; 
         flex-wrap: nowrap; 
         overflow-x: auto;  
         padding-bottom: 10px;
         margin-bottom: 20px;
-        /* 스크롤바 숨기기 (선택) */
-        scrollbar-width: thin; 
     }
 
     .pillar-card {
@@ -308,7 +305,7 @@ st.markdown("""
         text-align: center; 
         display: flex; flex-direction: column; align-items: center; 
         gap: 6px;
-        min-width: 70px; 
+        min-width: 60px; /* 기본 최소 너비 */
     }
     
     .luck-card {
@@ -320,7 +317,7 @@ st.markdown("""
         flex-direction: column; 
         align-items: center; 
         gap: 6px;
-        min-width: 70px;
+        min-width: 60px;
         border: 1px solid #eee;
     }
 
@@ -331,12 +328,13 @@ st.markdown("""
     .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
 
     .char-box {
-        width: 70px; height: 70px; border-radius: 16px;
+        border-radius: 16px;
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; 
-        font-size: 2.3em; font-weight: 900;
+        font-weight: 900;
         box-shadow: 0 3px 5px rgba(0,0,0,0.1); 
         margin: 0 auto;
+        /* 크기는 인라인 스타일로 제어 */
     }
 
     .small-text { font-size: 0.8em; color: #333; font-weight: 700; margin-bottom: 2px;}
@@ -361,50 +359,51 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
+    /* [수정] 하단 리스트 다이어트 */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
-        background: #fff; border-radius: 8px; padding: 10px 2px;
+        background: #fff; 
+        border-radius: 8px; 
+        padding: 4px 2px; /* 패딩 축소 */
         box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #eee;
-        cursor: pointer; transition: 0.2s; margin-bottom: 5px; width: 100%;
+        cursor: pointer; transition: 0.2s; 
+        margin-bottom: 5px; 
+        min-width: 45px; /* 너비 축소 */
     }
-    .mini-card-container:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+    .mini-card-container:hover { transform: translateY(-2px); }
     .dw-active { border: 2px solid #2196F3; background-color: #E3F2FD; }
 
-    .mini-sipsin { font-size: 0.7em; color: #666; margin-bottom: 2px; white-space: nowrap; }
+    .mini-sipsin { font-size: 0.65em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     .mini-char {
-        width: 36px; height: 36px; border-radius: 10px;
+        width: 32px; height: 32px; /* 박스 크기 축소 */
+        border-radius: 8px;
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.3em; font-weight: bold;
-        margin: 2px 0;
+        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
+        margin: 1px 0;
     }
-    .mini-unseong { font-size: 0.7em; color: #888; margin-top: 2px; }
-    .mini-age { font-size: 0.8em; font-weight: bold; color: #333; margin-top: 5px; }
+    .mini-unseong { font-size: 0.65em; color: #888; margin-top: 1px; }
+    .mini-age { font-size: 0.7em; font-weight: bold; color: #333; margin-top: 3px; }
 
-    /* [NEW] 모바일 최적화: 대운/세운 리스트 가로 스크롤 강제 */
+    /* 모바일 가로 스크롤 강제 (하단 리스트) */
     @media only screen and (max-width: 600px) {
-        /* 원국 카드는 크기 유지 or 약간 축소 */
-        .pillar-card, .luck-card { min-width: 70px; }
-        
-        /* Streamlit 컬럼(대운/세운 리스트)을 가로 스크롤로 변경하는 CSS Hack */
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important;
             overflow-x: auto !important;
             white-space: nowrap !important;
-            gap: 5px !important;
+            gap: 4px !important;
             padding-bottom: 5px;
         }
-        /* 컬럼 내부 요소 너비 고정 */
         div[data-testid="column"] {
             flex: 0 0 auto !important;
             width: auto !important;
-            min-width: 50px !important;
+            min-width: 40px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수
+# HTML 생성 함수 (동적 크기 조절 적용)
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -444,7 +443,20 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
+    # [NEW] 동적 크기 조절 로직
+    # 대운이나 세운이 켜져 있으면(expanded), 원국 글자를 작게 줄임
+    is_expanded = st.session_state.show_daewoon or st.session_state.show_seun
+    
+    if is_expanded:
+        box_size = "52px" # 축소된 크기
+        font_size = "1.8em"
+    else:
+        box_size = "68px" # 원래 크기 (대왕만하게)
+        font_size = "2.3em"
+        
+    style_attr = f'style="width:{box_size}; height:{box_size}; font-size:{font_size};"'
+    
+    return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}" {style_attr}>{stem}</div><div class="char-box bg-{b_idx}" {style_attr}>{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
 
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -458,7 +470,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V4.0")
+st.title("🌌 초정밀 만세력 V4.1")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -650,7 +662,6 @@ if st.session_state.is_calculated:
         st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
         st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
         
-        # [수정] 대운 리스트 (10개) - 모바일에서 가로 스크롤 적용됨 (CSS 덕분)
         dw_cols = st.columns(10)
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
@@ -671,7 +682,6 @@ if st.session_state.is_calculated:
             st.divider()
             st.markdown(f"#### 📅 **{sel_dw['s']}{sel_dw['b']}** 대운 기간의 세운 (⬅️)")
             
-            # [수정] 세운 리스트 (10개) - 가로 스크롤 적용됨
             seun_cols = st.columns(10)
             for k, item in enumerate(seun_visual):
                 with seun_cols[k]:
