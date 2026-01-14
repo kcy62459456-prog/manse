@@ -174,7 +174,7 @@ def geocode_osm(place):
 # ---------------------------------------------------------
 # 4. UI / CSS 스타일링
 # ---------------------------------------------------------
-st.set_page_config(page_title="역사 만세력", layout="wide")
+st.set_page_config(page_title="정밀 만세력", layout="wide")
 
 st.markdown("""
 <style>
@@ -277,9 +277,9 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
     return html
 
 # ---------------------------------------------------------
-# 5. 메인 앱 (시각 기준 선택 추가)
+# 5. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 역사 만세력 V2.6")
+st.title("🌌 정밀 만세력 V2.7")
 
 if 'is_calculated' not in st.session_state:
     st.session_state.is_calculated = False
@@ -289,7 +289,6 @@ with st.sidebar:
     name = st.text_input("이름", "사용자")
     gender = st.radio("성별", ["남", "여"], horizontal=True)
     
-    # [수정] 날짜 범위 : 1년 ~ 2100년 (역사 인물 조회용)
     birth_date = st.date_input(
         "생년월일 (양력)", 
         dt.date(1998, 1, 27),
@@ -322,20 +321,17 @@ with st.sidebar:
 
 if st.session_state.is_calculated:
     try:
-        # 1. 계산 (LMT 로직 추가)
+        # 1. 계산
         b_time = parse_hms(time_str)
         naive = dt.datetime.combine(birth_date, b_time)
         
         if basis.startswith("표준시"):
-            # TimezoneFinder로 표준시 적용
             tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
             local = naive.replace(tzinfo=ZoneInfo(tz_str))
             utc_dt = local.astimezone(dt.timezone.utc)
         else:
-            # LMT 적용
             utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
 
-        # 진태양시 계산 (공통)
         lat_dt, _ = apparent_solar_datetime(utc_dt, lon)
         jd_ut = jd_ut_from_utc(utc_dt)
         
@@ -344,7 +340,7 @@ if st.session_state.is_calculated:
         d_s, d_b, _ = day_pillar(lat_dt)
         h_s, h_b = hour_pillar(lat_dt, d_s)
         
-        # 2. 메인 명식 출력
+        # 2. 메인 명식
         st.write("") 
         st.markdown(f"### 🌺 **{name}**님의 원국 ({basis} 기준)")
         
@@ -372,11 +368,16 @@ if st.session_state.is_calculated:
             diff = nxt_jd - jd_ut
         else:
             diff = jd_ut - term_jd
-        dw_num = max(1, round(diff / 3))
+        
+        # [수정] 대운수 소수점 계산 (3일=1년 공식)
+        # 1년 = 365.2422일. 3일 = 1년.
+        # 정확히는 (diff_days / 3.0) 이 대운수.
+        dw_num_float = diff / 3.0
         
         # 4. 대운 UI (우측통행)
         st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
-        st.caption(f"대운수: {dw_num} ({'순행' if forward else '역행'})")
+        # 소수점 둘째자리까지 표시
+        st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
         
         ms_idx = STEMS.index(m_s)
         mb_idx = BRANCHES.index(m_b)
@@ -385,9 +386,14 @@ if st.session_state.is_calculated:
             offset = i if forward else -i
             ds = STEMS[(ms_idx + offset)%10]
             db = BRANCHES[(mb_idx + offset)%12]
-            age = dw_num + (i-1)*10
-            if i==1: age = dw_num
-            daewoon_raw.append({'s':ds, 'b':db, 'age':age})
+            
+            # 대운 시작 나이 (실수)
+            if i == 1:
+                start_age = dw_num_float
+            else:
+                start_age = dw_num_float + (i-1)*10
+                
+            daewoon_raw.append({'s':ds, 'b':db, 'age':start_age})
         
         daewoon_visual = daewoon_raw[::-1]
             
@@ -396,7 +402,9 @@ if st.session_state.is_calculated:
         dw_cols = st.columns(10)
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
-                if st.button(f"{dw['age']}세", key=f"dw_btn_{i}", use_container_width=True):
+                # 버튼에는 깔끔하게 소수점 2자리까지만
+                label = f"{dw['age']:.2f}세"
+                if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                     st.session_state.sel_dw_idx = i
                     st.rerun()
                 
@@ -404,7 +412,7 @@ if st.session_state.is_calculated:
                 card_html = draw_mini_pillar(
                     dw['s'], dw['b'], d_s, 
                     top_label="", 
-                    bottom_label=f"{dw['age']}세",
+                    bottom_label=label,
                     is_active=is_active
                 )
                 st.markdown(card_html, unsafe_allow_html=True)
@@ -415,24 +423,41 @@ if st.session_state.is_calculated:
         st.markdown(f"#### 📅 **{sel['s']}{sel['b']}** 대운 기간의 세운 (⬅️)")
         
         seun_cols = st.columns(10)
-        start_y = b_year + sel['age'] - 1
+        
+        # 세운 시작 연도 계산 (한국식/만나이 등 학파마다 다르나, 보통 정수 부분 + 생년으로 근사)
+        # 여기서는 (생년 + 대운수 정수부분)을 시작년도로 잡음
+        base_start_year = b_year + int(sel['age'])
         
         seun_raw = []
         for k in range(10):
-            this_y = start_y + k
+            this_y = base_start_year + k
             off = (this_y - 1984)
             ss = STEMS[off%10]
             bb = BRANCHES[off%12]
-            seun_raw.append({'y':this_y, 'age':sel['age']+k, 's':ss, 'b':bb})
+            
+            # 세운 나이 (대운수 소수점 + k)
+            current_age_float = sel['age'] + k
+            
+            seun_raw.append({
+                'y':this_y, 
+                'age': current_age_float, 
+                's':ss, 'b':bb
+            })
             
         seun_visual = seun_raw[::-1]
         
         for k, item in enumerate(seun_visual):
             with seun_cols[k]:
+                # 세운 나이도 소수점으로 표시할지, 정수로 할지 선택
+                # 보통 세운은 '몇 년도'가 중요하므로 나이는 정수(한국식 등)로 보기도 하지만
+                # 일관성을 위해 소수점으로 표시 (또는 정수화)
+                # 여기선 깔끔하게 정수 나이(만 나이 도달 기준)로 표시하거나 소수점 표시
+                age_disp = f"{item['age']:.1f}세"
+                
                 card_html = draw_mini_pillar(
                     item['s'], item['b'], d_s,
                     top_label="",
-                    bottom_label=f"{item['y']}<br>({item['age']}세)",
+                    bottom_label=f"{item['y']}<br>({age_disp})",
                     is_active=False
                 )
                 st.markdown(card_html, unsafe_allow_html=True)
