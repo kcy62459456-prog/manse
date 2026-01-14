@@ -5,18 +5,17 @@ import requests
 import streamlit as st
 from timezonefinder import TimezoneFinder
 import swisseph as swe
+import pandas as pd
+import os
 
 # ---------------------------------------------------------
 # 1. 기초 데이터
 # ---------------------------------------------------------
 STEMS = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"]
 BRANCHES = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"]
-
-# 오행 (0:목, 1:화, 2:토, 3:금, 4:수)
 STEM_ELEMENTS = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]  
 BRANCH_ELEMENTS = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4]
 
-# 지장간
 JIJANGGAN = {
     "子": ["壬", "癸"],       "丑": ["癸", "辛", "己"],
     "寅": ["戊", "丙", "甲"], "卯": ["甲", "乙"],
@@ -50,6 +49,7 @@ D_STEM_TO_ZI_HOUR_STEM = {
 }
 
 TF = TimezoneFinder()
+DB_FILE = "saju_db.csv" # 명식 저장용 파일
 
 # ---------------------------------------------------------
 # 2. 로직 함수들
@@ -70,12 +70,10 @@ def get_sipsin(day_stem: str, target: str) -> str:
     relation = (t_elem - d_elem) % 5
     d_pol = get_polarity(day_stem)
     t_pol = get_polarity(target)
-    
     if target == "子": t_pol = 0
     elif target == "亥": t_pol = 1
     elif target == "午": t_pol = 1
     elif target == "巳": t_pol = 0
-    
     is_diff = 1 if d_pol != t_pol else 0
     return SIPSIN_NAMES[relation][is_diff]
 
@@ -172,14 +170,24 @@ def geocode_osm(place):
     return None, None
 
 # ---------------------------------------------------------
-# 4. UI / CSS 스타일링
+# 4. 저장소 관리 (CSV)
 # ---------------------------------------------------------
-st.set_page_config(page_title="정밀 만세력", layout="wide")
+def load_db():
+    if os.path.exists(DB_FILE):
+        return pd.read_csv(DB_FILE)
+    return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+
+def save_db(df):
+    df.to_csv(DB_FILE, index=False)
+
+# ---------------------------------------------------------
+# 5. UI / CSS 스타일링
+# ---------------------------------------------------------
+st.set_page_config(page_title="완벽한 만세력 V2.8", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700&family=Noto+Serif+KR:wght@400;700&display=swap');
-    
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
     .pillar-card {
@@ -187,7 +195,6 @@ st.markdown("""
         text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
     
-    /* [색상] V 2.3 볼드 버전 */
     .bg-0 { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
     .bg-1 { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
     .bg-2 { background-color: #FFFDE7; color: #AF601A; border: 1px solid #FFF9C4; } 
@@ -261,9 +268,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
     s_sipsin = get_sipsin(day_stem, stem)
     b_sipsin = get_sipsin(day_stem, branch)
     unseong = get_12unseong(day_stem, branch)
-    
     active_cls = "dw-active" if is_active else ""
-    
     html = f"""
     <div class="mini-card-container {active_cls}">
         <div class="mini-sipsin">{s_sipsin}</div>
@@ -277,54 +282,100 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
     return html
 
 # ---------------------------------------------------------
-# 5. 메인 앱
+# 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 정밀 만세력 V2.7")
+st.title("🌌 만세력 V2.8 (데이터 저장)")
 
-if 'is_calculated' not in st.session_state:
-    st.session_state.is_calculated = False
+if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
+if 'db' not in st.session_state: st.session_state.db = load_db()
 
+# 사이드바
 with st.sidebar:
-    st.header("사주 정보 입력")
-    name = st.text_input("이름", "사용자")
-    gender = st.radio("성별", ["남", "여"], horizontal=True)
+    st.header("🗂️ 명식 보관함")
     
-    birth_date = st.date_input(
-        "생년월일 (양력)", 
-        dt.date(1998, 1, 27),
-        min_value=dt.date(1, 1, 1),
-        max_value=dt.date(2100, 12, 31),
-        help="서기 1년부터 2100년까지 선택 가능합니다."
-    )
+    # 1. 저장된 명식 불러오기
+    saved_list = st.session_state.db['이름'].tolist()
+    selected_profile = st.selectbox("불러오기", ["(선택 안함)"] + saved_list)
     
-    time_str = st.text_input("태어난 시각 (HH:MM)", "12:00")
-    
-    st.divider()
-    basis = st.radio("입력 시각 기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0, help="1961년 이전이나 서머타임 이슈가 복잡한 시기에는 LMT를 추천합니다.")
-    st.caption("※ 1900년 이전 출생자는 'LMT'를 선택하세요.")
-    st.divider()
+    # 기본값 설정
+    def_name, def_gender, def_date, def_time, def_basis, def_place, def_lat, def_lon = \
+        "사용자", "여", dt.date(1998, 1, 27), "12:00", "표준시 (현대)", "Seoul", 37.5665, 126.9780
 
-    st.subheader("출생지")
-    place = st.text_input("도시 검색", "Seoul")
-    if st.button("장소 검색"):
+    if selected_profile != "(선택 안함)":
+        row = st.session_state.db[st.session_state.db['이름'] == selected_profile].iloc[0]
+        def_name = row['이름']
+        def_gender = row['성별']
+        def_date = dt.datetime.strptime(str(row['생년월일']), "%Y-%m-%d").date()
+        def_time = row['시간']
+        def_basis = row['시각기준']
+        def_place = row['도시']
+        def_lat = float(row['위도'])
+        def_lon = float(row['경도'])
+
+    st.divider()
+    st.header("📝 정보 입력")
+    name = st.text_input("이름", def_name)
+    gender = st.radio("성별", ["남", "여"], index=0 if def_gender=="남" else 1, horizontal=True)
+    birth_date = st.date_input("생년월일", def_date, min_value=dt.date(1, 1, 1), max_value=dt.date(2100, 12, 31))
+    time_str = st.text_input("시간", def_time)
+    basis = st.radio("기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0 if "표준" in def_basis else 1)
+    
+    st.caption("장소")
+    col_p1, col_p2 = st.columns([2,1])
+    place = col_p1.text_input("도시", def_place, label_visibility="collapsed")
+    if col_p2.button("검색"):
         lat, lon = geocode_osm(place)
         if lat:
             st.session_state.lat, st.session_state.lon = lat, lon
-            st.success("위치 저장됨")
+            st.success("OK")
+            st.rerun()
+
+    lat = st.number_input("위도", value=st.session_state.get('lat', def_lat), format="%.4f")
+    lon = st.number_input("경도", value=st.session_state.get('lon', def_lon), format="%.4f")
     
-    lat = st.number_input("위도", value=st.session_state.get('lat', 37.5665), format="%.4f")
-    lon = st.number_input("경도", value=st.session_state.get('lon', 126.9780), format="%.4f")
-    
-    if st.button("명식 뽑기", type="primary"):
+    # 버튼 그룹
+    c1, c2 = st.columns(2)
+    if c1.button("🔥 명식 뽑기", type="primary"):
         st.session_state.is_calculated = True
         st.session_state.sel_dw_idx = 0 
+        
+    if c2.button("💾 현재 저장"):
+        new_row = {
+            "이름": name, "성별": gender, "생년월일": birth_date, "시간": time_str,
+            "시각기준": basis, "도시": place, "위도": lat, "경도": lon
+        }
+        # 같은 이름 있으면 덮어쓰기, 없으면 추가
+        df = st.session_state.db
+        if name in df['이름'].values:
+            df.loc[df['이름'] == name, :] = list(new_row.values())
+            st.toast(f"'{name}'님 정보가 수정되었습니다.")
+        else:
+            # pandas concat 권장 방식
+            new_df = pd.DataFrame([new_row])
+            df = pd.concat([df, new_df], ignore_index=True)
+            st.toast(f"'{name}'님 저장 완료!")
+        
+        st.session_state.db = df
+        save_db(df)
+        st.rerun()
 
+    # 삭제 버튼 (선택된 경우에만)
+    if selected_profile != "(선택 안함)":
+        if st.button(f"🗑️ '{selected_profile}' 삭제"):
+            df = st.session_state.db
+            df = df[df['이름'] != selected_profile]
+            st.session_state.db = df
+            save_db(df)
+            st.toast("삭제되었습니다.")
+            st.rerun()
+
+# ---------------------------------------------------------
+# 메인 로직 (계산 및 출력) - 기존과 동일
+# ---------------------------------------------------------
 if st.session_state.is_calculated:
     try:
-        # 1. 계산
         b_time = parse_hms(time_str)
         naive = dt.datetime.combine(birth_date, b_time)
-        
         if basis.startswith("표준시"):
             tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
             local = naive.replace(tzinfo=ZoneInfo(tz_str))
@@ -340,19 +391,16 @@ if st.session_state.is_calculated:
         d_s, d_b, _ = day_pillar(lat_dt)
         h_s, h_b = hour_pillar(lat_dt, d_s)
         
-        # 2. 메인 명식
         st.write("") 
-        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis} 기준)")
+        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
         
         col1, col2, col3, col4 = st.columns(4)
         with col4: draw_pillar_main("연주", y_s, y_b, d_s)
         with col3: draw_pillar_main("월주", m_s, m_b, d_s)
         with col2: draw_pillar_main("일주", d_s, d_b, d_s)
         with col1: draw_pillar_main("시주", h_s, h_b, d_s)
-        
         st.divider()
         
-        # 3. 대운 계산
         y_idx = STEMS.index(y_s)
         is_yang = (y_idx % 2 == 0)
         is_man = (gender == "남")
@@ -369,14 +417,9 @@ if st.session_state.is_calculated:
         else:
             diff = jd_ut - term_jd
         
-        # [수정] 대운수 소수점 계산 (3일=1년 공식)
-        # 1년 = 365.2422일. 3일 = 1년.
-        # 정확히는 (diff_days / 3.0) 이 대운수.
         dw_num_float = diff / 3.0
         
-        # 4. 대운 UI (우측통행)
         st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
-        # 소수점 둘째자리까지 표시
         st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
         
         ms_idx = STEMS.index(m_s)
@@ -386,81 +429,45 @@ if st.session_state.is_calculated:
             offset = i if forward else -i
             ds = STEMS[(ms_idx + offset)%10]
             db = BRANCHES[(mb_idx + offset)%12]
-            
-            # 대운 시작 나이 (실수)
-            if i == 1:
-                start_age = dw_num_float
-            else:
-                start_age = dw_num_float + (i-1)*10
-                
+            if i == 1: start_age = dw_num_float
+            else: start_age = dw_num_float + (i-1)*10
             daewoon_raw.append({'s':ds, 'b':db, 'age':start_age})
         
         daewoon_visual = daewoon_raw[::-1]
-            
         if 'sel_dw_idx' not in st.session_state: st.session_state.sel_dw_idx = 9
 
         dw_cols = st.columns(10)
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
-                # 버튼에는 깔끔하게 소수점 2자리까지만
                 label = f"{dw['age']:.2f}세"
                 if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                     st.session_state.sel_dw_idx = i
                     st.rerun()
-                
                 is_active = (i == st.session_state.sel_dw_idx)
-                card_html = draw_mini_pillar(
-                    dw['s'], dw['b'], d_s, 
-                    top_label="", 
-                    bottom_label=label,
-                    is_active=is_active
-                )
+                card_html = draw_mini_pillar(dw['s'], dw['b'], d_s, "", label, is_active)
                 st.markdown(card_html, unsafe_allow_html=True)
 
-        # 5. 세운 UI (우측통행)
         st.divider()
         sel = daewoon_visual[st.session_state.sel_dw_idx]
         st.markdown(f"#### 📅 **{sel['s']}{sel['b']}** 대운 기간의 세운 (⬅️)")
         
         seun_cols = st.columns(10)
-        
-        # 세운 시작 연도 계산 (한국식/만나이 등 학파마다 다르나, 보통 정수 부분 + 생년으로 근사)
-        # 여기서는 (생년 + 대운수 정수부분)을 시작년도로 잡음
         base_start_year = b_year + int(sel['age'])
-        
         seun_raw = []
         for k in range(10):
             this_y = base_start_year + k
             off = (this_y - 1984)
             ss = STEMS[off%10]
             bb = BRANCHES[off%12]
-            
-            # 세운 나이 (대운수 소수점 + k)
             current_age_float = sel['age'] + k
-            
-            seun_raw.append({
-                'y':this_y, 
-                'age': current_age_float, 
-                's':ss, 'b':bb
-            })
+            seun_raw.append({'y':this_y, 'age': current_age_float, 's':ss, 'b':bb})
             
         seun_visual = seun_raw[::-1]
-        
         for k, item in enumerate(seun_visual):
             with seun_cols[k]:
-                # 세운 나이도 소수점으로 표시할지, 정수로 할지 선택
-                # 보통 세운은 '몇 년도'가 중요하므로 나이는 정수(한국식 등)로 보기도 하지만
-                # 일관성을 위해 소수점으로 표시 (또는 정수화)
-                # 여기선 깔끔하게 정수 나이(만 나이 도달 기준)로 표시하거나 소수점 표시
                 age_disp = f"{item['age']:.1f}세"
-                
-                card_html = draw_mini_pillar(
-                    item['s'], item['b'], d_s,
-                    top_label="",
-                    bottom_label=f"{item['y']}<br>({age_disp})",
-                    is_active=False
-                )
+                card_html = draw_mini_pillar(item['s'], item['b'], d_s, "", f"{item['y']}<br>({age_disp})", False)
                 st.markdown(card_html, unsafe_allow_html=True)
 
     except Exception as e:
-        st.error(f"오류 발생: {e}")
+        st.error(f"오류: {e}")
