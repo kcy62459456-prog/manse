@@ -1,0 +1,4 @@
+streamlit
+timezonefinder
+pyswisseph
+requests
