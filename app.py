@@ -94,9 +94,6 @@ def calculate_voids(stem, branch):
     s_idx = STEMS.index(stem)
     b_idx = BRANCHES.index(branch)
     diff = (b_idx - s_idx) % 12
-    
-    # 순중공망 매핑 (차이값 -> 공망 지지 2개)
-    # 10(술해), 8(신유), 6(오미), 4(진사), 2(인묘), 0(자축)
     void_map = {
         10: ["戌", "亥"], 8: ["申", "酉"], 6: ["午", "未"],
         4: ["辰", "巳"], 2: ["寅", "卯"], 0: ["子", "丑"]
@@ -104,21 +101,16 @@ def calculate_voids(stem, branch):
     return void_map.get(diff, [])
 
 # ---------------------------------------------------------
-# 3. 신살 계산 로직 (수정됨)
+# 3. 신살 계산 로직 (기존 유지)
 # ---------------------------------------------------------
 def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
-    """
-    col_idx: 0(연), 1(월), 2(일), 3(시)
-    """
     shinsals = []
-    
     y_s, m_s, d_s, h_s = s_list
     y_b, m_b, d_b, h_b = b_list
     
     if pillar_type == 'branch':
         me = pillar_char
-        
-        # 1. 12신살 (기존 유지)
+        # 1. 12신살
         groups = {
             '수': {'frame': ['申','子','辰'], '역마': '寅', '도화': '酉', '화개': '辰'},
             '화': {'frame': ['寅','午','戌'], '역마': '申', '도화': '卯', '화개': '戌'},
@@ -134,13 +126,12 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
             if me == g['도화']: shinsals.append("도화")
             if me == g['화개']: shinsals.append("화개")
 
-        # 2. 귀인 (기존 유지)
+        # 2. 귀인
         chonul_map = {
             "甲": ["丑","未"], "戊": ["丑","未"], "庚": ["丑","未"],
             "乙": ["子","申"], "己": ["子","申"],
             "丙": ["亥","酉"], "丁": ["亥","酉"],
-            "辛": ["寅","午"],
-            "壬": ["巳","卯"], "癸": ["巳","卯"]
+            "辛": ["寅","午"], "壬": ["巳","卯"], "癸": ["巳","卯"]
         }
         if me in chonul_map.get(d_s, []): shinsals.append("천을귀인")
         
@@ -152,7 +143,7 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
         cheoneui = BRANCHES[prev_idx]
         if me == cheoneui: shinsals.append("천의성")
 
-        # 3. 흉살 (기존 유지)
+        # 3. 흉살
         yangin_map = {"甲":"卯", "丙":"午", "戊":"午", "庚":"酉", "壬":"子"} 
         if me == yangin_map.get(d_s): shinsals.append("양인")
         
@@ -164,18 +155,16 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
                       "午":"丑", "未":"寅", "申":"卯", "酉":"子", "戌":"巳", "亥":"辰"}
         if me == gwimun_map.get(d_b): shinsals.append("귀문")
         
-        # 4. 공망 (로직 변경: 일주는 연주 기준, 나머지는 일주 기준)
-        if col_idx == 2: # 일주(Day)인 경우
-            target_voids = calculate_voids(y_s, y_b) # 연주 기준 공망 계산
-        else: # 연/월/시주인 경우
-            target_voids = calculate_voids(d_s, d_b) # 일주 기준 공망 계산
-            
+        # 4. 공망 (일주는 연주 기준)
+        if col_idx == 2: # 일주
+            target_voids = calculate_voids(y_s, y_b) 
+        else: # 나머지
+            target_voids = calculate_voids(d_s, d_b) 
         if me in target_voids:
             shinsals.append("공망")
 
     elif pillar_type == 'stem':
         me = pillar_char
-        # 삼기, 월덕, 천덕, 월공 (기존 유지)
         s_set = set(s_list)
         if {"甲","戊","庚"}.issubset(s_set): shinsals.append("삼기")
         elif {"辛","壬","癸"}.issubset(s_set): shinsals.append("삼기")
@@ -297,13 +286,13 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링
+# 5. UI / CSS 스타일링 (업데이트)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V3.2", layout="wide")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700&family=Noto+Serif+KR:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
     .pillar-card {
@@ -311,40 +300,53 @@ st.markdown("""
         text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
     }
     
-    .bg-0 { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
-    .bg-1 { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
-    .bg-2 { background-color: #FFFDE7; color: #AF601A; border: 1px solid #FFF9C4; } 
-    .bg-3 { background-color: #FAFAFA; color: #424242; border: 1px solid #BDBDBD; } 
-    .bg-4 { background-color: #212121; color: #FFFFFF; border: 1px solid #424242; } 
+    /* [수정] 메인 글자 스타일 강화: 색상 진하게, 폰트 두껍게, 크기 키움 */
+    /* 목: 배경(진한 연두) / 글자(아주 진한 초록) */
+    .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
+    /* 화: 배경(진한 분홍) / 글자(아주 진한 빨강) */
+    .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
+    /* 토: 배경(진한 노랑) / 글자(아주 진한 갈색) */
+    .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
+    /* 금: 배경(진한 회색) / 글자(아주 진한 검정) */
+    .bg-3 { background-color: #F5F5F5; color: #212121; border: 2px solid #E0E0E0; } 
+    /* 수: 배경(검정) / 글자(흰색) - 유지하되 테두리 추가 */
+    .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
 
     .char-box {
-        width: 70px; height: 70px; border-radius: 18px;
+        width: 72px; height: 72px; border-radius: 16px;
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 2.2em; font-weight: bold;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin: 0 auto;
+        font-family: 'Noto Serif KR', serif; 
+        font-size: 2.4em; /* 글자 크기 확대 */
+        font-weight: 900; /* 최대 굵기 */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        margin: 0 auto;
     }
 
-    .small-text { font-size: 0.85em; color: #555; font-weight: 500; margin-bottom: 2px;}
+    .small-text { font-size: 0.85em; color: #333; font-weight: 600; margin-bottom: 2px;}
     .unseong-badge { 
         font-size: 0.8em; color: #2c3e50; background-color: #f1f3f5; 
         padding: 3px 8px; border-radius: 12px; font-weight: bold;
     }
     .jijanggan {
-        font-size: 0.75em; color: #777; letter-spacing: 2px;
+        font-size: 0.75em; color: #666; letter-spacing: 2px; font-weight: 600;
         margin-top: -2px; margin-bottom: 2px;
     }
     
+    /* [수정] 신살 뱃지 힘 빼기 */
     .shinsal-container {
-        display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; margin-top: 4px; max-width: 90px;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 4px; max-width: 90px;
     }
     .badge {
-        font-size: 0.7em; padding: 2px 6px; border-radius: 8px; font-weight: bold; color: white;
+        font-size: 0.65em; /* 크기 축소 */
+        padding: 2px 5px; border-radius: 6px; font-weight: 500; color: white;
+        opacity: 0.95; /* 약간 투명하게 */
     }
-    .badge-good { background-color: #E91E63; }
-    .badge-power { background-color: #607D8B; }
-    .badge-rel { background-color: #795548; }
-    .badge-12 { background-color: #3F51B5; }
-    .badge-gong { background-color: #000000; }
+    .badge-good { background-color: #D81B60; }
+    .badge-power { background-color: #546E7A; }
+    .badge-rel { background-color: #6D4C41; }
+    .badge-12 { background-color: #3949AB; }
+    /* 공망 색상 변경: 완전 블랙 -> 다크 그레이 */
+    .badge-gong { background-color: #424242; } 
     
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
@@ -381,7 +383,7 @@ def draw_pillar_main(title, stem, branch, s_list, b_list):
     hiddens = JIJANGGAN.get(branch, [])
     hidden_str = " ".join(hiddens)
 
-    # 신살 계산 (컬럼 인덱스 전달)
+    # 신살 계산
     stem_shinsal = get_shinsal(stem, 'stem', col_idx, s_list, b_list)
     branch_shinsal = get_shinsal(branch, 'branch', col_idx, s_list, b_list)
     pillar_shinsal = get_pillar_shinsal(stem, branch)
@@ -435,7 +437,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력")
+st.title("🌌 초정밀 만세력 V3.2")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
