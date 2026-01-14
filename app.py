@@ -172,9 +172,9 @@ def geocode_osm(place):
     return None, None
 
 # ---------------------------------------------------------
-# 4. UI / CSS 스타일링 (V 2.3 볼드 버전 유지)
+# 4. UI / CSS 스타일링
 # ---------------------------------------------------------
-st.set_page_config(page_title="완벽한 만세력", layout="wide")
+st.set_page_config(page_title="역사 만세력", layout="wide")
 
 st.markdown("""
 <style>
@@ -279,7 +279,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 5. 메인 앱 (시각 기준 선택 추가)
 # ---------------------------------------------------------
-st.title("🌌 완벽한 만세력 V2.4")
+st.title("🌌 역사 만세력 V2.6")
 
 if 'is_calculated' not in st.session_state:
     st.session_state.is_calculated = False
@@ -288,13 +288,21 @@ with st.sidebar:
     st.header("사주 정보 입력")
     name = st.text_input("이름", "사용자")
     gender = st.radio("성별", ["남", "여"], horizontal=True)
-    birth_date = st.date_input("생년월일", dt.date(1998, 1, 27))
+    
+    # [수정] 날짜 범위 : 1년 ~ 2100년 (역사 인물 조회용)
+    birth_date = st.date_input(
+        "생년월일 (양력)", 
+        dt.date(1998, 1, 27),
+        min_value=dt.date(1, 1, 1),
+        max_value=dt.date(2100, 12, 31),
+        help="서기 1년부터 2100년까지 선택 가능합니다."
+    )
+    
     time_str = st.text_input("태어난 시각 (HH:MM)", "12:00")
     
-    # [NEW] 시각 기준 선택 기능 부활
     st.divider()
     basis = st.radio("입력 시각 기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0, help="1961년 이전이나 서머타임 이슈가 복잡한 시기에는 LMT를 추천합니다.")
-    st.caption("※ 현대 출생자는 보통 '표준시'를 선택하세요.")
+    st.caption("※ 1900년 이전 출생자는 'LMT'를 선택하세요.")
     st.divider()
 
     st.subheader("출생지")
@@ -324,8 +332,7 @@ if st.session_state.is_calculated:
             local = naive.replace(tzinfo=ZoneInfo(tz_str))
             utc_dt = local.astimezone(dt.timezone.utc)
         else:
-            # LMT 적용 (단순 경도 시차 적용, UTC로 변환)
-            # LMT = UTC + (lon * 4min) => UTC = LMT - (lon * 240sec)
+            # LMT 적용
             utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
 
         # 진태양시 계산 (공통)
