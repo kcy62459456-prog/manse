@@ -172,9 +172,9 @@ def geocode_osm(place):
     return None, None
 
 # ---------------------------------------------------------
-# 4. UI / CSS 스타일링 (색상 리마스터)
+# 4. UI / CSS 스타일링 (V 2.3 볼드 버전 유지)
 # ---------------------------------------------------------
-st.set_page_config(page_title="프리미엄 만세력", layout="wide")
+st.set_page_config(page_title="완벽한 만세력", layout="wide")
 
 st.markdown("""
 <style>
@@ -182,24 +182,16 @@ st.markdown("""
     
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* ------------------------------ */
-    /* 1. 메인 카드 (4주) 스타일 */
-    /* ------------------------------ */
     .pillar-card {
         background-color: transparent; padding: 5px;
         text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
     
-    /* [색상 업데이트] 더 진하고 선명하게 */
-    /* 목: 아주 진한 초록 */
+    /* [색상] V 2.3 볼드 버전 */
     .bg-0 { background-color: #E8F5E9; color: #1B5E20; border: 1px solid #C8E6C9; } 
-    /* 화: 진한 붉은색 */
     .bg-1 { background-color: #FFEBEE; color: #B71C1C; border: 1px solid #FFCDD2; } 
-    /* 토: 진한 황토색/갈색 (가독성 UP) */
     .bg-2 { background-color: #FFFDE7; color: #AF601A; border: 1px solid #FFF9C4; } 
-    /* 금: 진한 차콜 그레이 (흰색과 대비) */
     .bg-3 { background-color: #FAFAFA; color: #424242; border: 1px solid #BDBDBD; } 
-    /* 수: 블랙 + 화이트 (유지) */
     .bg-4 { background-color: #212121; color: #FFFFFF; border: 1px solid #424242; } 
 
     .char-box {
@@ -219,19 +211,13 @@ st.markdown("""
         margin-top: -2px; margin-bottom: 2px;
     }
     
-    /* ------------------------------ */
-    /* 2. 미니 카드 (대운/세운) 스타일 */
-    /* ------------------------------ */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: #fff; border-radius: 8px; padding: 10px 2px;
         box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #eee;
-        cursor: pointer; transition: 0.2s;
-        margin-bottom: 5px; width: 100%;
+        cursor: pointer; transition: 0.2s; margin-bottom: 5px; width: 100%;
     }
     .mini-card-container:hover { transform: translateY(-3px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
-    
-    /* 선택된 대운 강조 */
     .dw-active { border: 2px solid #2196F3; background-color: #E3F2FD; }
 
     .mini-sipsin { font-size: 0.7em; color: #666; margin-bottom: 2px; white-space: nowrap; }
@@ -247,7 +233,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 메인 4주 그리기 함수
 def draw_pillar_main(title, stem, branch, day_stem):
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
@@ -270,7 +255,6 @@ def draw_pillar_main(title, stem, branch, day_stem):
     """
     st.markdown(html, unsafe_allow_html=True)
 
-# 대운/세운용 미니 카드 그리기 함수
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
@@ -293,9 +277,9 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
     return html
 
 # ---------------------------------------------------------
-# 5. 메인 앱
+# 5. 메인 앱 (시각 기준 선택 추가)
 # ---------------------------------------------------------
-st.title("🌟 프리미엄 만세력 V2 (Bold)")
+st.title("🌌 완벽한 만세력 V2.4")
 
 if 'is_calculated' not in st.session_state:
     st.session_state.is_calculated = False
@@ -307,6 +291,12 @@ with st.sidebar:
     birth_date = st.date_input("생년월일", dt.date(1998, 1, 27))
     time_str = st.text_input("태어난 시각 (HH:MM)", "12:00")
     
+    # [NEW] 시각 기준 선택 기능 부활
+    st.divider()
+    basis = st.radio("입력 시각 기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0, help="1961년 이전이나 서머타임 이슈가 복잡한 시기에는 LMT를 추천합니다.")
+    st.caption("※ 현대 출생자는 보통 '표준시'를 선택하세요.")
+    st.divider()
+
     st.subheader("출생지")
     place = st.text_input("도시 검색", "Seoul")
     if st.button("장소 검색"):
@@ -324,11 +314,21 @@ with st.sidebar:
 
 if st.session_state.is_calculated:
     try:
-        # 1. 계산
+        # 1. 계산 (LMT 로직 추가)
         b_time = parse_hms(time_str)
         naive = dt.datetime.combine(birth_date, b_time)
-        tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
-        utc_dt = naive.replace(tzinfo=ZoneInfo(tz_str)).astimezone(dt.timezone.utc)
+        
+        if basis.startswith("표준시"):
+            # TimezoneFinder로 표준시 적용
+            tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
+            local = naive.replace(tzinfo=ZoneInfo(tz_str))
+            utc_dt = local.astimezone(dt.timezone.utc)
+        else:
+            # LMT 적용 (단순 경도 시차 적용, UTC로 변환)
+            # LMT = UTC + (lon * 4min) => UTC = LMT - (lon * 240sec)
+            utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
+
+        # 진태양시 계산 (공통)
         lat_dt, _ = apparent_solar_datetime(utc_dt, lon)
         jd_ut = jd_ut_from_utc(utc_dt)
         
@@ -339,7 +339,7 @@ if st.session_state.is_calculated:
         
         # 2. 메인 명식 출력
         st.write("") 
-        st.markdown(f"### 🌺 **{name}**님의 원국")
+        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis} 기준)")
         
         col1, col2, col3, col4 = st.columns(4)
         with col4: draw_pillar_main("연주", y_s, y_b, d_s)
@@ -355,7 +355,6 @@ if st.session_state.is_calculated:
         is_man = (gender == "남")
         forward = (is_man and is_yang) or (not is_man and not is_yang)
         
-        # 대운수
         curr_idx = -1
         for i, (nm, deg, br) in enumerate(MAJOR_TERMS):
             if br == m_b: curr_idx = i; break
@@ -372,7 +371,6 @@ if st.session_state.is_calculated:
         st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
         st.caption(f"대운수: {dw_num} ({'순행' if forward else '역행'})")
         
-        # 데이터 준비
         ms_idx = STEMS.index(m_s)
         mb_idx = BRANCHES.index(m_b)
         daewoon_raw = []
