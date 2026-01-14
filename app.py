@@ -89,21 +89,13 @@ def get_12unseong(stem: str, branch: str) -> str:
     else: diff = (start_idx - target_idx) % 12
     return UNSEONG_ORDER[(3 + diff) % 12]
 
-# [수정] 공망 계산 헬퍼 (로직 수정됨)
 def calculate_voids(stem, branch):
     s_idx = STEMS.index(stem)
     b_idx = BRANCHES.index(branch)
-    # 공망 공식: (지지 - 천간) % 12 의 결과값에 따라 결정
     diff = (b_idx - s_idx) % 12
-    
-    # 올바른 매핑 테이블
     void_map = {
-        0:  ["戌", "亥"], # 갑자순 -> 술해 공망
-        10: ["申", "酉"], # 갑술순 -> 신유 공망
-        8:  ["午", "未"], # 갑신순 -> 오미 공망
-        6:  ["辰", "巳"], # 갑오순 -> 진사 공망
-        4:  ["寅", "卯"], # 갑진순 -> 인묘 공망
-        2:  ["子", "丑"]  # 갑인순 -> 자축 공망
+        0:  ["戌", "亥"], 10: ["申", "酉"], 8:  ["午", "未"],
+        6:  ["辰", "巳"], 4:  ["寅", "卯"], 2:  ["子", "丑"]
     }
     return void_map.get(diff, [])
 
@@ -296,18 +288,29 @@ def save_db(df):
 # ---------------------------------------------------------
 # 5. UI / CSS 스타일링
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V3.3", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V3.4", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
+    /* 1. 원국 레이아웃 (Flexbox로 밀착) */
+    .pillar-container {
+        display: flex;
+        justify-content: center;
+        gap: 6px; /* 기둥 사이 간격 좁게 */
+        flex-wrap: nowrap;
+        margin-bottom: 20px;
+    }
+    
     .pillar-card {
         background-color: transparent; padding: 5px;
         text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px;
+        min-width: 80px; /* 최소 너비 확보 */
     }
     
+    /* 카드 색상 */
     .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
     .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
     .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
@@ -334,7 +337,7 @@ st.markdown("""
     }
     
     .shinsal-container {
-        display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 4px; max-width: 90px;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; margin-top: 4px; max-width: 80px;
     }
     .badge {
         font-size: 0.65em; padding: 2px 5px; border-radius: 6px; font-weight: 500; color: white; opacity: 0.95;
@@ -345,6 +348,7 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
+    /* 대세운 카드 스타일 */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: #fff; border-radius: 8px; padding: 10px 2px;
@@ -363,15 +367,26 @@ st.markdown("""
     }
     .mini-unseong { font-size: 0.7em; color: #888; margin-top: 2px; }
     .mini-age { font-size: 0.8em; font-weight: bold; color: #333; margin-top: 5px; }
+
+    /* 비교 섹션용 레이아웃 */
+    .compare-container {
+        display: flex; gap: 20px; align-items: flex-start; justify-content: center;
+    }
+    .luck-section {
+        display: flex; gap: 10px; flex-direction: column; align-items: center;
+        background: #f8f9fa; padding: 10px; border-radius: 12px;
+    }
+    .luck-row { display: flex; gap: 10px; }
     
 </style>
 """, unsafe_allow_html=True)
 
-def draw_pillar_main(title, stem, branch, s_list, b_list):
+# HTML 생성 함수 (draw가 아닌 generate)
+def get_pillar_html(title, stem, branch, s_list, b_list):
     col_map = {"연주":0, "월주":1, "일주":2, "시주":3}
     col_idx = col_map.get(title, 0)
-    
     day_stem = s_list[2]
+    
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
     s_sipsin = get_sipsin(day_stem, stem) if title != "일주" else "본원"
@@ -380,7 +395,6 @@ def draw_pillar_main(title, stem, branch, s_list, b_list):
     hiddens = JIJANGGAN.get(branch, [])
     hidden_str = " ".join(hiddens)
 
-    # 신살 계산
     stem_shinsal = get_shinsal(stem, 'stem', col_idx, s_list, b_list)
     branch_shinsal = get_shinsal(branch, 'branch', col_idx, s_list, b_list)
     pillar_shinsal = get_pillar_shinsal(stem, branch)
@@ -398,7 +412,7 @@ def draw_pillar_main(title, stem, branch, s_list, b_list):
         else: color = "badge-rel"
         badges_html += f'<span class="badge {color}">{s}</span>'
 
-    html = f"""
+    return f"""
     <div class="pillar-card">
         <div class="small-text">{title}</div>
         <div class="small-text">{s_sipsin}</div>
@@ -410,7 +424,6 @@ def draw_pillar_main(title, stem, branch, s_list, b_list):
         <div class="shinsal-container">{badges_html}</div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
 
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -434,7 +447,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V3.3")
+st.title("🌌 초정밀 만세력 V3.4")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -532,16 +545,7 @@ if st.session_state.is_calculated:
         s_list = [y_s, m_s, d_s, h_s]
         b_list = [y_b, m_b, d_b, h_b]
         
-        st.write("") 
-        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col4: draw_pillar_main("연주", y_s, y_b, s_list, b_list)
-        with col3: draw_pillar_main("월주", m_s, m_b, s_list, b_list)
-        with col2: draw_pillar_main("일주", d_s, d_b, s_list, b_list)
-        with col1: draw_pillar_main("시주", h_s, h_b, s_list, b_list)
-        st.divider()
-        
+        # 1. 대운 계산 미리 수행 (좌측 패널 표시에 필요)
         y_idx = STEMS.index(y_s)
         is_yang = (y_idx % 2 == 0)
         is_man = (gender == "남")
@@ -560,9 +564,6 @@ if st.session_state.is_calculated:
         
         dw_num_float = diff / 3.0
         
-        st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
-        st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
-        
         ms_idx = STEMS.index(m_s)
         mb_idx = BRANCHES.index(m_b)
         daewoon_raw = []
@@ -577,37 +578,110 @@ if st.session_state.is_calculated:
         daewoon_visual = daewoon_raw[::-1]
         if 'sel_dw_idx' not in st.session_state: st.session_state.sel_dw_idx = 9
 
+        # 선택된 대운 정보
+        sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
+        
+        # 세운 정보 (기본값: 대운 시작년도)
+        if 'sel_seun_year' not in st.session_state:
+            st.session_state.sel_seun_year = b_year + int(sel_dw['age'])
+
+        # 세운 데이터 계산
+        sel_seun = None
+        # 현재 선택된 대운 내의 10년 세운 리스트
+        seun_visual = []
+        base_start_year = b_year + int(sel_dw['age'])
+        for k in range(10):
+            this_y = base_start_year + k
+            off = (this_y - 1984)
+            ss = STEMS[off%10]
+            bb = BRANCHES[off%12]
+            current_age_float = sel_dw['age'] + k
+            item = {'y':this_y, 'age': current_age_float, 's':ss, 'b':bb}
+            seun_visual.append(item)
+            if this_y == st.session_state.sel_seun_year:
+                sel_seun = item
+        
+        seun_visual = seun_visual[::-1] # 우측통행
+        if sel_seun is None: sel_seun = seun_visual[-1] # fallback
+
+        st.write("") 
+        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
+        
+        # ----------------------------------------------------------------
+        # [NEW] 메인 레이아웃: [운세 패널] + [원국 패널] (Flexbox)
+        # ----------------------------------------------------------------
+        col_main = st.columns([1, 2.5]) # 좌측(운세) 좁게, 우측(원국) 넓게
+        
+        # 1. 좌측: 선택된 대운/세운 표시
+        with col_main[0]:
+            st.markdown(f"##### 🧐 선택된 운 (비교)")
+            # 세운, 대운 나란히 표시
+            html_luck = f"""
+            <div class="luck-row" style="justify-content: center;">
+                <div>
+                    <div style="text-align:center; font-size:0.8em; margin-bottom:4px;">세운({sel_seun['y']})</div>
+                    {draw_mini_pillar(sel_seun['s'], sel_seun['b'], d_s, "", "세운", True)}
+                </div>
+                <div>
+                    <div style="text-align:center; font-size:0.8em; margin-bottom:4px;">대운</div>
+                    {draw_mini_pillar(sel_dw['s'], sel_dw['b'], d_s, "", "대운", True)}
+                </div>
+            </div>
+            """
+            st.markdown(html_luck, unsafe_allow_html=True)
+
+        # 2. 우측: 원국 4주 (밀착형)
+        with col_main[1]:
+            # HTML로 한 덩어리로 묶어서 렌더링 (Flexbox gap 적용)
+            html_pillars = ""
+            html_pillars += get_pillar_html("시주", h_s, h_b, s_list, b_list)
+            html_pillars += get_pillar_html("일주", d_s, d_b, s_list, b_list)
+            html_pillars += get_pillar_html("월주", m_s, m_b, s_list, b_list)
+            html_pillars += get_pillar_html("연주", y_s, y_b, s_list, b_list)
+            
+            final_html = f"""
+            <div class="pillar-container">
+                {html_pillars}
+            </div>
+            """
+            st.markdown(final_html, unsafe_allow_html=True)
+
+        st.divider()
+        
+        # 3. 대운 리스트 (클릭 시 좌측 패널 업데이트)
+        st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
+        st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
+        
         dw_cols = st.columns(10)
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
                 label = f"{dw['age']:.2f}세"
                 if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                     st.session_state.sel_dw_idx = i
+                    # 대운 바뀌면 세운 연도도 초기화 (시작년도)
+                    st.session_state.sel_seun_year = b_year + int(dw['age'])
                     st.rerun()
                 is_active = (i == st.session_state.sel_dw_idx)
                 card_html = draw_mini_pillar(dw['s'], dw['b'], d_s, "", label, is_active)
                 st.markdown(card_html, unsafe_allow_html=True)
 
         st.divider()
-        sel = daewoon_visual[st.session_state.sel_dw_idx]
-        st.markdown(f"#### 📅 **{sel['s']}{sel['b']}** 대운 기간의 세운 (⬅️)")
+        
+        # 4. 세운 리스트 (클릭 시 좌측 패널 업데이트)
+        st.markdown(f"#### 📅 **{sel_dw['s']}{sel_dw['b']}** 대운 기간의 세운 (⬅️)")
         
         seun_cols = st.columns(10)
-        base_start_year = b_year + int(sel['age'])
-        seun_raw = []
-        for k in range(10):
-            this_y = base_start_year + k
-            off = (this_y - 1984)
-            ss = STEMS[off%10]
-            bb = BRANCHES[off%12]
-            current_age_float = sel['age'] + k
-            seun_raw.append({'y':this_y, 'age': current_age_float, 's':ss, 'b':bb})
-            
-        seun_visual = seun_raw[::-1]
         for k, item in enumerate(seun_visual):
             with seun_cols[k]:
                 age_disp = f"{item['age']:.1f}세"
-                card_html = draw_mini_pillar(item['s'], item['b'], d_s, "", f"{item['y']}<br>({age_disp})", False)
+                btn_label = f"{item['y']}"
+                # 버튼 클릭 시 세운 선택 업데이트
+                if st.button(btn_label, key=f"seun_btn_{k}", use_container_width=True):
+                    st.session_state.sel_seun_year = item['y']
+                    st.rerun()
+                    
+                is_sel_seun = (item['y'] == st.session_state.sel_seun_year)
+                card_html = draw_mini_pillar(item['s'], item['b'], d_s, "", f"{item['y']}<br>({age_disp})", is_sel_seun)
                 st.markdown(card_html, unsafe_allow_html=True)
 
     except Exception as e:
