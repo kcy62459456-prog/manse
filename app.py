@@ -278,13 +278,16 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V4.3 - 초밀착 & 슬림핏)
+# 5. UI / CSS 스타일링 (V4.4 - 강제 축소 & 누드 디자인)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V4.3", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V4.4", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
+    
+    * { box-sizing: border-box; } /* 레이아웃 계산 단순화 */
+
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
     .total-flex-container {
@@ -292,7 +295,7 @@ st.markdown("""
         flex-direction: row;
         align-items: flex-start;
         justify-content: center;
-        gap: 4px; /* 기본 간격 매우 좁게 */
+        gap: 2px; /* 기본 간격 최소화 */
         flex-wrap: nowrap; 
         overflow-x: auto;  
         padding-bottom: 10px;
@@ -302,28 +305,18 @@ st.markdown("""
     
     @media only screen and (max-width: 600px) {
         .total-flex-container {
-            justify-content: flex-start; 
+            justify-content: flex-start; /* 모바일은 왼쪽 정렬 */
         }
     }
 
-    .pillar-card {
+    .pillar-card, .luck-card {
         background-color: transparent; 
-        padding: 2px;
+        padding: 0px;
         text-align: center; 
         display: flex; flex-direction: column; align-items: center; 
-        gap: 4px;
+        gap: 2px; /* 내부 요소 간격 축소 */
         flex: 0 0 auto;
-    }
-    
-    /* [수정] 대운/세운 카드도 투명하게, 스타일 원국과 동일화 */
-    .luck-card {
-        background-color: transparent; /* 배경 제거 */
-        border: none; /* 테두리 제거 */
-        padding: 2px;
-        text-align: center; 
-        display: flex; flex-direction: column; align-items: center; 
-        gap: 4px;
-        flex: 0 0 auto;
+        border: none; /* 테두리 제거 (누드) */
     }
 
     .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
@@ -333,7 +326,7 @@ st.markdown("""
     .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
 
     .char-box {
-        border-radius: 14px;
+        border-radius: 12px;
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; 
         font-weight: 900;
@@ -341,21 +334,21 @@ st.markdown("""
         margin: 0 auto;
     }
 
-    .small-text { font-size: 0.8em; color: #333; font-weight: 700; margin-bottom: 1px;}
+    .small-text { font-size: 0.75em; color: #333; font-weight: 700; margin-bottom: 1px;}
     .unseong-badge { 
-        font-size: 0.7em; color: #2c3e50; background-color: #f1f3f5; 
-        padding: 1px 5px; border-radius: 8px; font-weight: bold;
+        font-size: 0.65em; color: #2c3e50; background-color: #f1f3f5; 
+        padding: 1px 4px; border-radius: 8px; font-weight: bold;
     }
     .jijanggan {
-        font-size: 0.65em; color: #666; letter-spacing: 0px; font-weight: 600;
+        font-size: 0.6em; color: #666; letter-spacing: 0px; font-weight: 600;
         margin-top: -1px; margin-bottom: 1px;
     }
     
     .shinsal-container {
-        display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 2px; max-width: 60px;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 2px; max-width: 50px;
     }
     .badge {
-        font-size: 0.55em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95;
+        font-size: 0.5em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95;
     }
     .badge-good { background-color: #D81B60; }
     .badge-power { background-color: #546E7A; }
@@ -363,33 +356,33 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
+    /* 하단 리스트 스타일 */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
-        background: transparent; 
-        border: none; box-shadow: none; 
+        background: transparent; border: none; box-shadow: none; 
         padding: 0px; 
         cursor: pointer; transition: 0.2s; 
         margin-bottom: 5px; 
-        min-width: 40px; 
+        min-width: 35px; /* 너비 더 축소 */
     }
     .mini-card-container:hover { transform: translateY(-2px); }
     .dw-active { 
         background-color: #E3F2FD; 
         border-radius: 8px; 
-        padding: 4px 2px; 
+        padding: 2px; /* 패딩 축소 */
     }
 
-    .mini-sipsin { font-size: 0.65em; color: #666; margin-bottom: 1px; white-space: nowrap; }
+    .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     .mini-char {
-        width: 32px; height: 32px; 
+        width: 30px; height: 30px; /* 대운 버튼 크기 축소 */
         border-radius: 8px;
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
+        font-family: 'Noto Serif KR', serif; font-size: 1.1em; font-weight: bold;
         margin: 1px 0;
     }
-    .mini-unseong { font-size: 0.65em; color: #888; margin-top: 1px; }
-    /* [수정] 나이 글자 크기 축소 */
-    .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
+    .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
+    /* [수정] 나이 글자 더 작게 */
+    .mini-age { font-size: 0.55em; font-weight: bold; color: #555; margin-top: 2px; }
 
     @media only screen and (max-width: 600px) {
         div[data-testid="stHorizontalBlock"] {
@@ -402,14 +395,14 @@ st.markdown("""
         div[data-testid="column"] {
             flex: 0 0 auto !important;
             width: auto !important;
-            min-width: 35px !important;
+            min-width: 30px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수 (동적 크기/간격 조절)
+# HTML 생성 함수 (강제 축소 로직)
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -449,17 +442,19 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    # [동적 크기 조절]
+    # [강제 축소 로직]
     is_expanded = st.session_state.show_daewoon or st.session_state.show_seun
     
     if is_expanded:
-        box_size = "48px" # 축소 (더 작게)
-        font_size = "1.7em"
-        min_w = "52px" # 카드 최소 너비도 강제로 줄임
+        # 6개가 다 뜰 때는 아주 작게 (42px)
+        box_size = "42px" 
+        font_size = "1.5em"
+        min_w = "44px" 
     else:
-        box_size = "68px" # 원래 크기
+        # 평소엔 시원하게
+        box_size = "68px" 
         font_size = "2.3em"
-        min_w = "72px"
+        min_w = "70px"
         
     style_attr = f'style="width:{box_size}; height:{box_size}; font-size:{font_size};"'
     card_style = f'style="min-width:{min_w};"'
@@ -478,7 +473,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V4.3")
+st.title("🌌 초정밀 만세력 V4.4")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -655,7 +650,7 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 8px;"></div>' # 간격
+            dynamic_html += '<div style="width: 8px;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
