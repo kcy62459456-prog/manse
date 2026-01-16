@@ -151,6 +151,9 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
                       "午":"丑", "未":"寅", "申":"卯", "酉":"子", "戌":"巳", "亥":"辰"}
         if me == gwimun_map.get(d_b): shinsals.append("귀문")
         
+        # 공망 (일주 기준 / 대세운은 일주 기준으로 봄)
+        # col_idx 2는 일주 본체 -> 연주 기준 공망
+        # 그 외(연/월/시/대운/세운) -> 일주 기준 공망
         if col_idx == 2: target_voids = calculate_voids(y_s, y_b) 
         else: target_voids = calculate_voids(d_s, d_b) 
         if me in target_voids: shinsals.append("공망")
@@ -278,9 +281,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V4.7 - Mobile First)
+# 5. UI / CSS 스타일링 (V4.8 - Detail Finished)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V4.7", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V4.8", layout="wide")
 
 st.markdown("""
 <style>
@@ -288,12 +291,12 @@ st.markdown("""
     * { box-sizing: border-box; }
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* [기본 스타일 = 모바일] 무조건 작고 오밀조밀하게 시작 */
+    /* 1. 통합 컨테이너: 항상 중앙 정렬 (모바일에서도) */
     .total-flex-container {
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        justify-content: flex-start; /* 모바일은 왼쪽 정렬 */
+        justify-content: center; /* 모바일에서도 중앙 정렬! */
         gap: 1px; /* 초밀착 */
         flex-wrap: nowrap;
         overflow-x: auto;
@@ -325,27 +328,26 @@ st.markdown("""
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold;}
+    .unseong-badge { 
+        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
+        padding: 1px 3px; border-radius: 6px; font-weight: bold;
+        white-space: nowrap;
+    }
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     
-    .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
+    .shinsal-container { 
+        display: flex; flex-wrap: wrap; justify-content: center; 
+        gap: 1px; margin-top: 1px; max-width: 42px; 
+    }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
 
-    /* [PC 화면 확장] 화면 너비가 600px 넘으면 그때만 키운다! */
+    /* [PC 화면 확장] */
     @media only screen and (min-width: 601px) {
-        .total-flex-container {
-            justify-content: center; /* PC는 중앙 정렬 */
-            gap: 4px;
-        }
-        .pillar-card, .luck-card {
-            min-width: 72px; /* PC 너비 */
-            gap: 4px;
-        }
+        .total-flex-container { gap: 4px; }
+        .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
         .char-box {
-            width: 72px; height: 72px; /* PC 박스 */
-            font-size: 2.3em;
-            border-radius: 16px;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.15); 
+            width: 72px; height: 72px; font-size: 2.3em;
+            border-radius: 16px; box-shadow: 0 3px 6px rgba(0,0,0,0.15); 
         }
         .small-text { font-size: 0.9em; }
         .unseong-badge { font-size: 0.8em; padding: 2px 6px; }
@@ -354,7 +356,7 @@ st.markdown("""
         .badge { font-size: 0.65em; padding: 2px 5px; }
     }
 
-    /* 오행 색상 (공통) */
+    /* 오행 색상 */
     .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
     .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
     .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
@@ -366,11 +368,13 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* 하단 리스트 (Mobile First) */
+    /* 하단 리스트 (Button Width Fix) */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
-        cursor: pointer; margin-bottom: 5px; min-width: 35px; 
+        cursor: pointer; margin-bottom: 5px; 
+        min-width: 25px; /* 너비 최소화 */
+        max-width: 40px; /* 최대 너비 제한 */
     }
     .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
@@ -383,21 +387,25 @@ st.markdown("""
     .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
     .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
 
-    /* 모바일 하단 가로 스크롤 강제 */
+    /* 모바일 하단 가로 스크롤 & 버튼 너비 강제 축소 */
     @media only screen and (max-width: 600px) {
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important; overflow-x: auto !important;
-            gap: 2px !important; padding-bottom: 5px;
+            gap: 0px !important; padding-bottom: 5px;
         }
+        /* [중요] 버튼이 든 컬럼의 min-width를 0으로 강제해서 글자만큼만 차지하게 함 */
         div[data-testid="column"] {
-            flex: 0 0 auto !important; width: auto !important; min-width: 35px !important;
+            flex: 0 0 auto !important; 
+            width: auto !important; 
+            min-width: 0px !important;
+            padding-right: 4px !important; /* 버튼 사이 간격 */
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수 (CSS 클래스로만 제어 - 인라인 스타일 제거)
+# HTML 생성 함수 (대세운에도 지장간/신살 표시)
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -409,35 +417,55 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     if title == "일주": s_sipsin = "본원"
     
     unseong = get_12unseong(day_stem, branch)
-    hiddens_html = ""
-    badges_html = ""
     
-    if not is_luck:
-        hiddens = JIJANGGAN.get(branch, [])
-        hiddens_html = f'<div class="jijanggan">{" ".join(hiddens)}</div>'
-        
-        col_map = {"연주":0, "월주":1, "일주":2, "시주":3}
-        col_idx = col_map.get(title, 0)
-        stem_shinsal = get_shinsal(stem, 'stem', col_idx, s_list, b_list)
-        branch_shinsal = get_shinsal(branch, 'branch', col_idx, s_list, b_list)
-        pillar_shinsal = get_pillar_shinsal(stem, branch)
-        
-        for s in stem_shinsal:
-            color = "badge-good" if "귀인" in s or "삼기" in s or "공" in s else "badge-power"
-            badges_html += f'<span class="badge {color}">{s}</span>'
-        for s in pillar_shinsal:
-            badges_html += f'<span class="badge badge-power">{s}</span>'
-        for s in branch_shinsal:
-            if s in ["역마","도화","화개"]: color = "badge-12"
-            elif "귀인" in s or "천의" in s: color = "badge-good"
-            elif s == "공망": color = "badge-gong"
-            else: color = "badge-rel"
-            badges_html += f'<span class="badge {color}">{s}</span>'
+    # [수정 1] is_luck 여부와 상관없이 지장간 표시 (통일성)
+    hiddens = JIJANGGAN.get(branch, [])
+    hiddens_html = f'<div class="jijanggan">{" ".join(hiddens)}</div>'
+    
+    # [수정 2] is_luck 여부와 상관없이 신살 표시 (관계성)
+    col_idx = -1 # 대운/세운은 -1로 처리 (공망 계산 시 일주 기준이 됨)
+    if title == "연주": col_idx = 0
+    elif title == "월주": col_idx = 1
+    elif title == "일주": col_idx = 2
+    elif title == "시주": col_idx = 3
+    
+    # get_shinsal 함수는 '현재 기둥의 글자'와 '원국 전체(s_list, b_list)'를 비교하므로 
+    # 대운/세운 글자를 넣어도 원국과의 관계(도화, 귀인 등)가 계산됨.
+    stem_shinsal = get_shinsal(stem, 'stem', col_idx, s_list, b_list)
+    branch_shinsal = get_shinsal(branch, 'branch', col_idx, s_list, b_list)
+    pillar_shinsal = get_pillar_shinsal(stem, branch)
+    
+    badges_html = ""
+    for s in stem_shinsal:
+        color = "badge-good" if "귀인" in s or "삼기" in s or "공" in s else "badge-power"
+        badges_html += f'<span class="badge {color}">{s}</span>'
+    for s in pillar_shinsal:
+        badges_html += f'<span class="badge badge-power">{s}</span>'
+    for s in branch_shinsal:
+        if s in ["역마","도화","화개"]: color = "badge-12"
+        elif "귀인" in s or "천의" in s: color = "badge-good"
+        elif s == "공망": color = "badge-gong"
+        else: color = "badge-rel"
+        badges_html += f'<span class="badge {color}">{s}</span>'
     
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    # [수정] 인라인 스타일 제거 -> CSS @media 쿼리가 알아서 함
-    return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
+    # [강제 축소 로직]
+    is_expanded = st.session_state.show_daewoon or st.session_state.show_seun
+    
+    if is_expanded:
+        box_size = "42px" 
+        font_size = "1.5em"
+        min_w = "44px" 
+    else:
+        box_size = "68px" 
+        font_size = "2.3em"
+        min_w = "70px"
+        
+    style_attr = f'style="width:{box_size}; height:{box_size}; font-size:{font_size};"'
+    card_style = f'style="min-width:{min_w};"'
+    
+    return f"""<div class="{card_cls}" {card_style}><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}" {style_attr}>{stem}</div><div class="char-box bg-{b_idx}" {style_attr}>{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
 
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -451,7 +479,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V4.7")
+st.title("🌌 초정밀 만세력 V4.8")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
