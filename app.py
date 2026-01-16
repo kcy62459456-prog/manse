@@ -278,13 +278,14 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V4.5 - 반응형 완결판)
+# 5. UI / CSS 스타일링 (V4.6 - 단단한 고정 & 모바일 최적화)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V4.5", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V4.6", layout="wide")
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
+    
     * { box-sizing: border-box; }
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
@@ -293,15 +294,15 @@ st.markdown("""
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        justify-content: center; /* PC에서는 중앙 정렬 */
-        flex-wrap: nowrap; /* 줄바꿈 절대 금지 */
-        overflow-x: auto;  
+        justify-content: center; /* PC: 중앙 정렬 */
+        gap: 4px; /* 기둥 사이 간격 4px로 고정 (벌어짐 방지) */
+        flex-wrap: nowrap; /* 줄바꿈 금지 */
+        overflow-x: auto; 
         padding-bottom: 10px;
         margin-bottom: 20px;
-        -webkit-overflow-scrolling: touch;
     }
     
-    /* 2. 카드 기본 스타일 */
+    /* PC 기본 스타일 (크게 고정) */
     .pillar-card, .luck-card {
         background-color: transparent; 
         padding: 0px;
@@ -310,11 +311,11 @@ st.markdown("""
         gap: 2px;
         flex: 0 0 auto;
         border: none;
+        min-width: 72px; /* PC에서는 넉넉하게 */
     }
 
-    /* PC 화면 (기본): 항상 큰 크기 유지 */
     .char-box {
-        width: 70px; height: 70px; 
+        width: 72px; height: 72px; /* PC 고정 크기 */
         border-radius: 16px;
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; 
@@ -324,28 +325,28 @@ st.markdown("""
         margin: 0 auto;
     }
     
-    /* [반응형 핵심] 모바일 화면 (600px 이하)에서만 다이어트 */
+    /* [반응형] 모바일 (600px 이하) - 여기서만 크기를 줄임 */
     @media only screen and (max-width: 600px) {
         .total-flex-container {
-            justify-content: flex-start; /* 모바일은 왼쪽 정렬 */
-            gap: 2px !important; /* 모바일 간격 초밀착 */
+            justify-content: flex-start; /* 모바일: 왼쪽 정렬 (스크롤 위해) */
+            gap: 2px !important;
         }
         
-        /* 'expanded' 클래스가 붙으면 강제 축소 */
-        .expanded-mode .char-box {
-            width: 44px !important; 
-            height: 44px !important;
-            font-size: 1.5em !important;
+        .pillar-card, .luck-card {
+            min-width: 48px; /* 모바일 폭 */
+        }
+        
+        .char-box {
+            width: 45px; height: 45px; /* 모바일 박스 크기 고정 */
+            font-size: 1.5em; /* 글자 크기 고정 */
             border-radius: 10px;
         }
-        .expanded-mode .pillar-card, .expanded-mode .luck-card {
-            min-width: 46px !important; /* 카드 폭도 같이 줄임 */
-        }
         
-        /* 평소(normal) 모바일 크기 */
-        .normal-mode .char-box {
-            width: 64px; height: 64px; font-size: 2.1em;
-        }
+        .small-text { font-size: 0.7em; }
+        .unseong-badge { font-size: 0.6em; padding: 1px 3px; }
+        .jijanggan { font-size: 0.6em; letter-spacing: -1px; }
+        .shinsal-container { max-width: 45px; }
+        .badge { font-size: 0.5em; padding: 1px 2px; }
     }
 
     /* 오행 색상 */
@@ -357,19 +358,19 @@ st.markdown("""
 
     .small-text { font-size: 0.8em; color: #333; font-weight: 700; margin-bottom: 1px;}
     .unseong-badge { 
-        font-size: 0.7em; color: #2c3e50; background-color: #f1f3f5; 
+        font-size: 0.75em; color: #2c3e50; background-color: #f1f3f5; 
         padding: 1px 5px; border-radius: 8px; font-weight: bold;
     }
     .jijanggan {
-        font-size: 0.65em; color: #666; letter-spacing: 0px; font-weight: 600;
+        font-size: 0.7em; color: #666; letter-spacing: 0px; font-weight: 600;
         margin-top: -1px; margin-bottom: 1px;
     }
     
     .shinsal-container {
-        display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 2px; max-width: 60px;
+        display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 2px; max-width: 70px;
     }
     .badge {
-        font-size: 0.55em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95;
+        font-size: 0.6em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95;
     }
     .badge-good { background-color: #D81B60; }
     .badge-power { background-color: #546E7A; }
@@ -407,7 +408,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수 (CSS 클래스 활용)
+# HTML 생성 함수 (파이썬 로직에서 사이즈 제거 -> CSS로 이임)
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -446,6 +447,7 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     card_cls = "luck-card" if is_luck else "pillar-card"
     
+    # [수정] 파이썬에서 크기 지정 제거 -> CSS 클래스가 알아서 함
     return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
 
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
@@ -460,7 +462,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V4.5")
+st.title("🌌 초정밀 만세력 V4.6")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -637,17 +639,15 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 10px;"></div>' 
+            # 대운과 원국 사이 미세 간격 
+            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
         dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
         dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
         
-        # [모바일용 클래스 적용] 확장 여부에 따라 'expanded-mode' 또는 'normal-mode' 클래스 부여
-        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
-        
-        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
+        final_html = f'<div class="total-flex-container">{dynamic_html}</div>'
         st.markdown(final_html, unsafe_allow_html=True)
 
         st.divider()
