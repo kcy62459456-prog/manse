@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.9 (Left Align Force)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V6.0 (Inline Block)", layout="wide")
 
     st.markdown("""
     <style>
@@ -428,6 +428,18 @@ def main():
             .jijanggan { font-size: 0.75em; letter-spacing: 1px; }
             .shinsal-container { gap: 2px; margin-top: 4px; max-width: 70px; }
             .badge { font-size: 0.65em; padding: 2px 5px; }
+            
+            /* PC 버튼 기본 */
+            div[data-testid="stHorizontalBlock"] button {
+                width: 100% !important; 
+                padding: 2px 0px !important; 
+                margin: 0 auto !important; 
+                height: auto !important; 
+                min-height: 25px !important; 
+                line-height: 1 !important; 
+                font-size: 0.7rem !important;
+                background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 4px;
+            }
         }
 
         .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
@@ -438,28 +450,27 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [핵심 수정] 모바일 전용 강력 스타일 */
+        /* [핵심 수정 V6.0] 모바일 전용: Layout Engine 변경 (Flex -> Inline Block) */
         @media only screen and (max-width: 600px) {
             
-            /* 1. 컨테이너: 왼쪽 정렬 (justify-content: flex-start) + 간격 축소 */
+            /* 1. 컨테이너: 블록으로 변경하고 줄바꿈 금지 */
             div[data-testid="stHorizontalBlock"] {
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                justify-content: flex-start !important; /* [중요] 왼쪽으로 밀착! */
-                gap: 3px !important;
+                display: block !important;       /* Flex 해제 */
+                white-space: nowrap !important;  /* 줄바꿈 금지 */
+                overflow-x: auto !important;     /* 가로 스크롤 */
                 width: 100% !important;
-                align-items: flex-start !important;
+                padding-bottom: 5px;
             }
             
-            /* 2. 기둥(Column): 내용물 크기에 자동 맞춤 (Auto) */
+            /* 2. 기둥(Column): 인라인 블록으로 변경 (글자처럼 취급) */
             div[data-testid="column"] {
-                flex: 0 0 auto !important;     /* 늘어나지 않고(0) 줄어들지 않고(0) 자동(auto) */
-                width: auto !important;        /* 고정 픽셀 대신 auto로 변경 */
-                min-width: 48px !important;    /* 최소 폭 확보 */
-                padding: 0 !important;
-                margin: 0 !important;
+                display: inline-block !important; /* 옆으로 나란히 */
+                width: 50px !important;           /* 너비 고정 */
+                min-width: 50px !important;
+                max-width: 50px !important;
+                vertical-align: top !important;   /* 상단 정렬 */
+                margin-right: 2px !important;     /* 우측 간격 살짝 */
+                float: none !important;           /* 혹시 모를 float 해제 */
             }
 
             /* 3. 버튼(Button) */
@@ -470,21 +481,10 @@ def main():
                 padding: 2px 0px !important;
                 margin: 0 auto !important;
                 font-size: 0.7rem !important;
+                background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 4px;
             }
         }
         
-        /* PC용 기본 버튼 스타일 */
-        div[data-testid="stHorizontalBlock"] button {
-            width: 100% !important; 
-            padding: 2px 0px !important; 
-            margin: 0 auto !important; 
-            height: auto !important; 
-            min-height: 25px !important; 
-            line-height: 1 !important; 
-            font-size: 0.7rem !important;
-            background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 4px;
-        }
-
         /* 미니 카드 컨테이너 */
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
@@ -503,7 +503,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.9")
+    st.title("🌌 초정밀 만세력 V6.0")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
