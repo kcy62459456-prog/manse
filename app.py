@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.6 (Fixed Width)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V5.7 (Nuclear Force)", layout="wide")
 
     st.markdown("""
     <style>
@@ -407,6 +407,7 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
+        /* 공통 스타일 */
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
@@ -417,7 +418,7 @@ def main():
         .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
         .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
         
-        /* [PC 확장] */
+        /* PC 스타일 */
         @media only screen and (min-width: 601px) {
             .total-flex-container { gap: 4px; }
             .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
@@ -437,26 +438,42 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [핵심] Streamlit의 가로 레이아웃 강제 교정 */
-        div[data-testid="stHorizontalBlock"] {
-            display: flex !important;
-            flex-wrap: nowrap !important;
-            overflow-x: auto !important;
-            gap: 2px !important; /* 기둥 사이 간격 2px로 강제 축소 */
-            padding-bottom: 5px;
-        }
+        /* [핵심] 모바일 전용 강력 스타일 (Nuclear Force) */
+        @media only screen and (max-width: 600px) {
+            
+            /* 1. 컨테이너: 무조건 가로 정렬 & 줄바꿈 금지 */
+            div[data-testid="stHorizontalBlock"] {
+                display: flex !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                overflow-x: auto !important;
+                gap: 2px !important;
+                width: 100% !important;
+            }
+            
+            /* 2. 기둥(Column): 절대 크기 고정 & 늘어나지 않기 */
+            div[data-testid="column"] {
+                flex: 0 0 52px !important;     /* flex-grow, flex-shrink 0, basis 52px */
+                width: 52px !important;        /* 너비 강제 */
+                min-width: 52px !important;    /* 최소 너비 강제 */
+                max-width: 52px !important;    /* 최대 너비 강제 (확장 방지) */
+                padding: 0 !important;
+                margin: 0 !important;
+                overflow: hidden !important;   /* 넘치는 것 숨김 */
+            }
 
-        /* [핵심] 개별 컬럼(기둥)의 너비 강제 고정 */
-        div[data-testid="column"] {
-            flex: 0 0 auto !important; /* 자동 확장 금지 */
-            width: 55px !important;    /* 너비 55px 고정 */
-            min-width: 55px !important;
-            max-width: 55px !important;
-            padding: 0 !important;     /* 내부 여백 제거 */
-            margin: 0 !important;
+            /* 3. 버튼(Button): 기둥 크기에 맞춰 축소 */
+            div[data-testid="stHorizontalBlock"] button {
+                width: 50px !important;        /* 버튼도 강제로 50px로 축소 */
+                min-width: 50px !important;
+                max-width: 50px !important;
+                padding: 2px 0px !important;
+                margin: 0 auto !important;
+                font-size: 0.7rem !important;
+            }
         }
-
-        /* 버튼 스타일 강제 조정 */
+        
+        /* PC용 기본 버튼 스타일 (모바일은 위에서 덮어씀) */
         div[data-testid="stHorizontalBlock"] button {
             width: 100% !important; 
             padding: 2px 0px !important; 
@@ -471,7 +488,7 @@ def main():
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
             cursor: pointer; margin-bottom: 5px; 
-            width: 100%; /* 부모(컬럼) 너비에 맞춤 */
+            width: 100%; 
             margin: 0 auto 5px auto; 
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
@@ -485,7 +502,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.6")
+    st.title("🌌 초정밀 만세력 V5.7")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
