@@ -420,7 +420,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V7.2 (Smart Shinsal)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.2", layout="wide")
 
     st.markdown("""
     <style>
@@ -519,7 +519,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V7.2")
+    st.title("🌌 초정밀 만세력")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
