@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.4 - 타일 그리드 & 강제 압축)
+# 5. UI / CSS 스타일링 (V5.5 - 모바일 강제 줄바꿈 금지)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.4", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.5", layout="wide")
 
 st.markdown("""
 <style>
@@ -309,11 +309,7 @@ st.markdown("""
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { 
-        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
-        padding: 1px 3px; border-radius: 6px; font-weight: bold;
-        white-space: nowrap;
-    }
+    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;}
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
@@ -342,51 +338,59 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* [핵심 1] 하단 대운/세운 리스트 (Zero Gap) */
+    /* [핵심 수정] 하단 리스트 강제 가로 정렬 (줄바꿈 방지) */
     div[data-testid="stHorizontalBlock"] {
-        gap: 0px !important; /* 기둥 사이 간격 0 */
+        display: flex !important;
+        flex-wrap: nowrap !important; /* 줄바꿈 절대 금지 */
+        overflow-x: auto !important; /* 가로 스크롤 허용 */
+        gap: 0px !important; 
         padding: 0px !important;
+        width: 100% !important;
+        align-items: stretch !important;
     }
     
-    /* 각 컬럼(Column)의 패딩/마진 제거 */
+    /* 각 기둥 고정 너비 설정 (38px로 강제) */
     div[data-testid="column"] {
+        flex: 0 0 38px !important; /* 고정 너비 */
+        width: 38px !important;
+        min-width: 38px !important;
+        max-width: 38px !important;
         padding: 0px !important;
         margin: 0px !important;
-        min-width: 0px !important;
-        flex: 1 1 auto !important;
+        overflow: hidden !important; /* 넘치는 것 숨김 */
     }
 
-    /* 버튼 스타일 조정 (투명/꽉 채우기) */
+    /* 버튼 스타일 조정 */
     div[data-testid="stHorizontalBlock"] button {
-        width: 100% !important;        /* 너비 100%로 꽉 채움 */
-        min-width: 0px !important;
-        padding: 4px 0px !important;   /* 좌우 패딩 0 */
+        width: 100% !important;        
+        padding: 4px 0px !important;   
         margin: 0px !important;
+        font-size: 0.7em !important; /* 글자 크기 축소 */
         height: auto !important;
-        line-height: 1.2 !important;
-        background-color: transparent !important; /* 배경 투명 */
-        border: none !important;                  /* 테두리 제거 */
+        line-height: 1.1 !important;
+        background-color: transparent !important; 
+        border: none !important;                  
         color: #333333;
-        border-radius: 0px !important; /* 사각형 */
-        display: block !important;
+        border-radius: 0px !important; 
+        box-shadow: none !important;
     }
     
-    /* [핵심 2] 하단 미니 카드 스타일 (꽉 채우기) */
+    /* 하단 미니 카드 스타일 */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
         cursor: pointer; margin-bottom: 0px; 
-        width: 100% !important; /* 꽉 채우기 */
+        width: 100% !important; 
     }
     .dw-active { background-color: #E3F2FD; } 
     
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     
-    /* 글자 박스 스타일 (타일처럼 보이게) */
+    /* 글자 박스 스타일 */
     .mini-char {
-        width: 100%; /* 너비 100% -> 옆 타일과 붙음 */
+        width: 100%; 
         height: 34px; 
-        border-radius: 4px; /* 살짝만 둥글게 */
+        border-radius: 4px; 
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
         margin: 1px 0;
@@ -394,18 +398,6 @@ st.markdown("""
     .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
     .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
 
-    @media only screen and (max-width: 600px) {
-        div[data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important; overflow-x: auto !important;
-            gap: 0px !important; 
-        }
-        /* 모바일에서 10개가 한 줄에 다 보이도록 강제 (10%씩) */
-        div[data-testid="column"] {
-            flex: 0 0 10% !important; 
-            width: 10% !important; 
-            min-width: 32px !important; /* 너무 작아지지 않게 방어선 */
-        }
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -464,7 +456,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.4")
+st.title("🌌 초정밀 만세력 V5.5")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -648,9 +640,7 @@ if st.session_state.is_calculated:
         dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
         dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
         
-        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
-        
-        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
+        final_html = f'<div class="total-flex-container">{dynamic_html}</div>'
         st.markdown(final_html, unsafe_allow_html=True)
 
         st.divider()
