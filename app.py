@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.1 - 진짜 슬림 버튼)
+# 5. UI / CSS 스타일링 (V5.2 - 중앙 정렬 완성)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.1", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.2", layout="wide")
 
 st.markdown("""
 <style>
@@ -313,7 +313,6 @@ st.markdown("""
         min-width: 44px;
     }
     
-    /* [수정] 대운/세운 카드 투명화 (원국과 동일하게) */
     .luck-card {
         background-color: transparent !important;
         border: none !important;
@@ -332,7 +331,11 @@ st.markdown("""
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;}
+    .unseong-badge { 
+        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
+        padding: 1px 3px; border-radius: 6px; font-weight: bold;
+        white-space: nowrap;
+    }
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
@@ -361,41 +364,31 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* [핵심] 하단 버튼 강제 다이어트 (CSS Injection) */
-    /* Streamlit의 버튼은 'button' 태그로 렌더링됨. 이를 타겟팅하여 스타일 덮어쓰기 */
+    /* 하단 버튼 스타일 */
     div[data-testid="stHorizontalBlock"] button {
-        width: auto !important;        /* 1. 너비를 내용물만큼만 */
-        min-width: 0px !important;     /* 2. 최소 너비 해제 */
-        padding: 4px 8px !important;   /* 3. 패딩 축소 */
-        margin: 0px !important;        /* 4. 마진 제거 */
-        height: auto !important;       /* 5. 높이 자동 */
+        width: auto !important;
+        min-width: 0px !important;
+        padding: 4px 8px !important;
+        margin: 0 auto !important; /* [핵심] 버튼 자체를 중앙 정렬 */
+        height: auto !important;
         min-height: 0px !important;
         line-height: 1.2 !important;
         background-color: #ffffff;
         border: 1px solid #eeeeee;
         color: #333333;
         border-radius: 8px;
+        display: block !important; /* block으로 변경하여 margin auto 적용 */
     }
-    /* 버튼 호버 효과 */
-    div[data-testid="stHorizontalBlock"] button:hover {
-        border-color: #ff4b4b;
-        color: #ff4b4b;
-    }
-    /* 버튼 클릭 시(active) 효과는 Streamlit 내부 상태라 CSS만으로는 완벽 제어 어렵지만 시도 */
-    div[data-testid="stHorizontalBlock"] button:focus {
-        border-color: #ff4b4b;
-        box-shadow: none;
-    }
-
+    
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
         cursor: pointer; margin-bottom: 5px; 
         min-width: 30px; 
+        margin: 0 auto 5px auto; /* [핵심] 간지 카드 중앙 정렬 */
     }
+    .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
     
-    /* 선택된 항목 표시용 (draw_mini_pillar 함수에서 사용 안함 - 버튼으로 대체됨) */
-    /* 하지만 미니 카드가 버튼 안에 들어갈 경우를 대비 */
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     .mini-char {
         width: 32px; height: 32px; border-radius: 8px;
@@ -411,15 +404,22 @@ st.markdown("""
             flex-wrap: nowrap !important; overflow-x: auto !important;
             gap: 4px !important; padding-bottom: 5px;
         }
+        /* [핵심] 기둥 자체를 Flex 컨테이너로 만들고 내부 요소 중앙 정렬 */
         div[data-testid="column"] {
-            flex: 0 0 auto !important; width: auto !important; min-width: 0px !important;
+            flex: 0 0 auto !important; 
+            width: auto !important; 
+            min-width: 0px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important; /* 수직 중앙 */
+            justify-content: flex-start !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수 (투명화 적용)
+# HTML 생성 함수
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -431,7 +431,6 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     if title == "일주": s_sipsin = "본원"
     
     unseong = get_12unseong(day_stem, branch)
-    
     hiddens = JIJANGGAN.get(branch, [])
     hiddens_html = f'<div class="jijanggan">{" ".join(hiddens)}</div>'
     
@@ -458,7 +457,6 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
         else: color = "badge-rel"
         badges_html += f'<span class="badge {color}">{s}</span>'
     
-    # [수정] card_cls는 이제 스타일에서 투명하게 처리됨
     card_cls = "luck-card" if is_luck else "pillar-card"
     
     return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
@@ -475,7 +473,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.1")
+st.title("🌌 초정밀 만세력 V5.2")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -652,7 +650,7 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 8px;"></div>' 
+            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
@@ -671,7 +669,6 @@ if st.session_state.is_calculated:
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
                 label = f"{dw['age']:.2f}세"
-                # 버튼을 그리는 로직은 동일하지만, CSS가 버튼 스타일을 강제로 바꿈
                 if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                     st.session_state.sel_dw_idx = i
                     st.session_state.show_daewoon = True
