@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.5 (Mobile Optimized)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V5.6 (Fixed Width)", layout="wide")
 
     st.markdown("""
     <style>
@@ -407,14 +407,9 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* [PC/Mobile 공통] 가로 스크롤 컨테이너 */
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
-        
-        /* 카드 스타일 */
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
-        
-        /* 글자 박스 */
         .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
         .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
         .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
@@ -434,7 +429,6 @@ def main():
             .badge { font-size: 0.65em; padding: 2px 5px; }
         }
 
-        /* 오행 색상 및 뱃지 색상 */
         .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
         .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
         .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
@@ -443,44 +437,41 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [중요] 모바일 다닥다닥 보기 강제 적용 (CSS Hack) */
-        @media only screen and (max-width: 600px) {
-            /* Streamlit의 가로 컬럼 컨테이너 강제 수정 */
-            div[data-testid="stHorizontalBlock"] {
-                flex-wrap: nowrap !important;
-                overflow-x: auto !important;
-                white-space: nowrap !important;
-                display: flex !important;
-                gap: 5px !important;
-                padding-bottom: 10px;
-            }
-            /* 컬럼 하나하나의 너비를 좁게 강제 */
-            div[data-testid="column"] {
-                flex: 0 0 auto !important;
-                min-width: 55px !important; /* 최소 55px 확보 */
-                max-width: 65px !important;
-                width: auto !important;
-            }
-        }
-        
-        /* 버튼 스타일 미세 조정 */
-        div[data-testid="stHorizontalBlock"] button {
-            width: 100% !important; 
-            min-width: 0px !important; 
-            padding: 4px 2px !important; 
-            margin: 0 auto !important; 
-            height: auto !important; 
-            min-height: 0px !important; 
-            line-height: 1.1 !important; 
-            font-size: 0.7rem !important;
-            background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 6px; display: block !important; 
+        /* [핵심] Streamlit의 가로 레이아웃 강제 교정 */
+        div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            gap: 2px !important; /* 기둥 사이 간격 2px로 강제 축소 */
+            padding-bottom: 5px;
         }
 
-        /* 미니 카드 스타일 */
+        /* [핵심] 개별 컬럼(기둥)의 너비 강제 고정 */
+        div[data-testid="column"] {
+            flex: 0 0 auto !important; /* 자동 확장 금지 */
+            width: 55px !important;    /* 너비 55px 고정 */
+            min-width: 55px !important;
+            max-width: 55px !important;
+            padding: 0 !important;     /* 내부 여백 제거 */
+            margin: 0 !important;
+        }
+
+        /* 버튼 스타일 강제 조정 */
+        div[data-testid="stHorizontalBlock"] button {
+            width: 100% !important; 
+            padding: 2px 0px !important; 
+            margin: 0 auto !important; 
+            height: auto !important; 
+            min-height: 25px !important; 
+            line-height: 1 !important; 
+            font-size: 0.7rem !important;
+            background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 4px;
+        }
+
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
             cursor: pointer; margin-bottom: 5px; 
-            width: 50px; /* 고정 너비 */
+            width: 100%; /* 부모(컬럼) 너비에 맞춤 */
             margin: 0 auto 5px auto; 
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
@@ -494,7 +485,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.5")
+    st.title("🌌 초정밀 만세력 V5.6")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -643,7 +634,7 @@ def main():
             dw_cols = st.columns(10)
             for i, dw in enumerate(daewoon_visual):
                 with dw_cols[i]:
-                    label = f"{dw['age']:.0f}" # 나이 소수점 제거 (깔끔하게)
+                    label = f"{dw['age']:.0f}"
                     if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                         st.session_state.sel_dw_idx = i
                         st.session_state.show_daewoon = True
@@ -663,7 +654,6 @@ def main():
                 for k, item in enumerate(seun_visual):
                     with seun_cols[k]:
                         age_disp = f"{int(item['age'])}세"
-                        # 년도 뒷자리 2개만 표시 (공간 절약)
                         year_short = str(item['y'])[2:]
                         if st.button(f"'{year_short}", key=f"seun_btn_{k}", use_container_width=True):
                             st.session_state.sel_seun_year = item['y']
