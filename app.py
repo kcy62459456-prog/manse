@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.3 - Zero Gap & Full Width)
+# 5. UI / CSS 스타일링 (V5.4 - 타일 그리드 & 강제 압축)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.3", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.4", layout="wide")
 
 st.markdown("""
 <style>
@@ -309,7 +309,11 @@ st.markdown("""
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;}
+    .unseong-badge { 
+        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
+        padding: 1px 3px; border-radius: 6px; font-weight: bold;
+        white-space: nowrap;
+    }
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
@@ -338,8 +342,7 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* [핵심 수정 1] 하단 대운/세운 리스트 (Zero Gap) */
-    /* Streamlit의 가로 컨테이너(Horizontal Block)의 간격 제거 */
+    /* [핵심 1] 하단 대운/세운 리스트 (Zero Gap) */
     div[data-testid="stHorizontalBlock"] {
         gap: 0px !important; /* 기둥 사이 간격 0 */
         padding: 0px !important;
@@ -350,7 +353,7 @@ st.markdown("""
         padding: 0px !important;
         margin: 0px !important;
         min-width: 0px !important;
-        flex: 1 1 auto !important; /* 유동적 너비 */
+        flex: 1 1 auto !important;
     }
 
     /* 버튼 스타일 조정 (투명/꽉 채우기) */
@@ -368,14 +371,14 @@ st.markdown("""
         display: block !important;
     }
     
-    /* [핵심 수정 2] 하단 미니 카드 스타일 (꽉 채우기) */
+    /* [핵심 2] 하단 미니 카드 스타일 (꽉 채우기) */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
-        cursor: pointer; margin-bottom: 0px; /* 하단 여백 제거 */
+        cursor: pointer; margin-bottom: 0px; 
         width: 100% !important; /* 꽉 채우기 */
     }
-    .dw-active { background-color: #E3F2FD; } /* 선택된 것만 배경색 */
+    .dw-active { background-color: #E3F2FD; } 
     
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     
@@ -392,15 +395,15 @@ st.markdown("""
     .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
 
     @media only screen and (max-width: 600px) {
-        /* 모바일에서는 가로 스크롤 허용하되 간격 0 유지 */
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important; overflow-x: auto !important;
             gap: 0px !important; 
         }
+        /* 모바일에서 10개가 한 줄에 다 보이도록 강제 (10%씩) */
         div[data-testid="column"] {
-            flex: 0 0 auto !important; /* 크기 고정 */
-            width: 10% !important; /* 10개니까 대략 10%씩 */
-            min-width: 35px !important; /* 최소 확보 */
+            flex: 0 0 10% !important; 
+            width: 10% !important; 
+            min-width: 32px !important; /* 너무 작아지지 않게 방어선 */
         }
     }
 </style>
@@ -461,7 +464,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.3")
+st.title("🌌 초정밀 만세력 V5.4")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -638,7 +641,7 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 10px;"></div>' 
+            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
