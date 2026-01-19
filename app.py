@@ -8,16 +8,16 @@ import swisseph as swe
 import pandas as pd
 import os
 
-# ---------------------------------------------------------
-# 1. 기초 데이터
-# ---------------------------------------------------------
-STEMS = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"]
-BRANCHES = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"]
-STEM_ELEMENTS = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]  
+# =============================================================================
+# [MODULE 1] 상수 및 설정 (CONSTANTS)
+# =============================================================================
+STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
+BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+STEM_ELEMENTS = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]  # 목, 화, 토, 금, 수
 BRANCH_ELEMENTS = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4]
 
 JIJANGGAN = {
-    "子": ["壬", "癸"],       "丑": ["癸", "辛", "己"],
+    "子": ["壬", "癸"], "丑": ["癸", "辛", "己"],
     "寅": ["戊", "丙", "甲"], "卯": ["甲", "乙"],
     "辰": ["乙", "癸", "戊"], "巳": ["戊", "庚", "丙"],
     "午": ["丙", "己", "丁"], "未": ["丁", "乙", "己"],
@@ -30,7 +30,7 @@ SIPSIN_NAMES = {
     2: ["편재", "정재"], 3: ["편관", "정관"], 4: ["편인", "정인"]
 }
 
-UNSEONG_ORDER = ["절","태","양","장생","목욕","관대","건록","제왕","쇠","병","사","묘"]
+UNSEONG_ORDER = ["절", "태", "양", "장생", "목욕", "관대", "건록", "제왕", "쇠", "병", "사", "묘"]
 
 MAJOR_TERMS = [
     ("입춘", 315.0, "寅"), ("경칩", 345.0, "卯"), ("청명", 15.0,  "辰"),
@@ -51,9 +51,46 @@ D_STEM_TO_ZI_HOUR_STEM = {
 TF = TimezoneFinder()
 DB_FILE = "saju_db.csv"
 
-# ---------------------------------------------------------
-# 2. 로직 함수들
-# ---------------------------------------------------------
+# =============================================================================
+# [MODULE 2] 유틸리티 및 데이터 처리 (UTILS)
+# =============================================================================
+def load_db():
+    if os.path.exists(DB_FILE):
+        try:
+            return pd.read_csv(DB_FILE)
+        except Exception:
+            return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+    return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+
+def save_db(df):
+    df.to_csv(DB_FILE, index=False)
+
+@st.cache_data(ttl=3600)  # 1시간 캐싱
+def geocode_osm_cached(place):
+    """지오코딩 결과를 캐싱하여 API 호출 최소화 및 속도 향상"""
+    url = "https://nominatim.openstreetmap.org/search"
+    headers = {"User-Agent": "manseryeok-v3-optimized"}
+    try:
+        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=3)
+        if r.ok and r.json():
+            return float(r.json()[0]['lat']), float(r.json()[0]['lon'])
+    except:
+        pass
+    return None, None
+
+def parse_hms(s: str) -> dt.time:
+    s = (s or "").strip()
+    parts = s.split(":")
+    try:
+        if len(parts) == 2: return dt.time(int(parts[0]), int(parts[1]))
+        elif len(parts) == 3: return dt.time(int(parts[0]), int(parts[1]))
+        else: return dt.time(12, 0)
+    except:
+        return dt.time(12, 0)
+
+# =============================================================================
+# [MODULE 3] 사주 핵심 로직 (CORE LOGIC)
+# =============================================================================
 def get_element_idx(char: str) -> int:
     if char in STEMS: return STEM_ELEMENTS[STEMS.index(char)]
     if char in BRANCHES: return BRANCH_ELEMENTS[BRANCHES.index(char)]
@@ -70,10 +107,13 @@ def get_sipsin(day_stem: str, target: str) -> str:
     relation = (t_elem - d_elem) % 5
     d_pol = get_polarity(day_stem)
     t_pol = get_polarity(target)
-    if target == "子": t_pol = 0
-    elif target == "亥": t_pol = 1
-    elif target == "午": t_pol = 1
-    elif target == "巳": t_pol = 0
+    
+    # 지지 음양 보정 (체용론 적용)
+    if target == "子": t_pol = 0  # 양수지만 체는 음
+    elif target == "亥": t_pol = 1 # 음수지만 체는 양
+    elif target == "午": t_pol = 1 # 양화지만 체는 음
+    elif target == "巳": t_pol = 0 # 음화지만 체는 양
+    
     is_diff = 1 if d_pol != t_pol else 0
     return SIPSIN_NAMES[relation][is_diff]
 
@@ -99,10 +139,8 @@ def calculate_voids(stem, branch):
     }
     return void_map.get(diff, [])
 
-# ---------------------------------------------------------
-# 3. 신살 계산 로직
-# ---------------------------------------------------------
-def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
+def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
+    """신살 계산 로직 분리"""
     shinsals = []
     y_s, m_s, d_s, h_s = s_list
     y_b, m_b, d_b, h_b = b_list
@@ -116,9 +154,12 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
             '목': {'frame': ['亥','卯','未'], '역마': '巳', '도화': '子', '화개': '未'},
         }
         active_frames = []
-        for g_name, g_info in groups.items():
-            if any(b in g_info['frame'] for b in b_list):
-                active_frames.append(g_info)
+        # 연지, 일지 기준으로 신살 프레임 확인
+        for basis in [y_b, d_b]:
+            for g_name, g_info in groups.items():
+                if basis in g_info['frame']:
+                    active_frames.append(g_info)
+                    
         for g in active_frames:
             if me == g['역마']: shinsals.append("역마")
             if me == g['도화']: shinsals.append("도화")
@@ -151,6 +192,7 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
                       "午":"丑", "未":"寅", "申":"卯", "酉":"子", "戌":"巳", "亥":"辰"}
         if me == gwimun_map.get(d_b): shinsals.append("귀문")
         
+        # 공망 계산
         if col_idx == 2: target_voids = calculate_voids(y_s, y_b) 
         else: target_voids = calculate_voids(d_s, d_b) 
         if me in target_voids: shinsals.append("공망")
@@ -162,6 +204,7 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
         elif {"辛","壬","癸"}.issubset(s_set): shinsals.append("삼기")
         elif {"乙","丙","丁"}.issubset(s_set): shinsals.append("삼기")
         
+        # 월덕/천덕/월공
         wd_map = {}
         if m_b in ['寅','午','戌']: wd_map = '丙'
         elif m_b in ['申','子','辰']: wd_map = '壬'
@@ -182,23 +225,14 @@ def get_shinsal(pillar_char, pillar_type, col_idx, s_list, b_list):
     
     return list(set(shinsals))
 
-def get_pillar_shinsal(stem, branch):
+def get_ganji_shinsal(stem, branch):
     ganji = stem + branch
     res = []
     if ganji in ["庚辰", "庚戌", "壬辰", "壬戌", "戊戌"]: res.append("괴강")
     if ganji in ["甲辰", "乙未", "丙戌", "丁丑", "戊辰", "壬戌", "癸丑"]: res.append("백호")
     return res
 
-# ---------------------------------------------------------
-# 4. 천문 계산
-# ---------------------------------------------------------
-def parse_hms(s: str) -> dt.time:
-    s = (s or "").strip()
-    parts = s.split(":")
-    if len(parts) not in (2, 3): return dt.time(12, 0)
-    try: return dt.time(int(parts[0]), int(parts[1]))
-    except: return dt.time(12, 0)
-
+# --- 천문 계산 (캐싱 적용을 위해 로직 캡슐화) ---
 def jd_ut_from_utc(dt_utc: dt.datetime) -> float:
     hour = dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600
     return swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hour, swe.GREG_CAL)
@@ -212,215 +246,120 @@ def utc_from_jd_ut(jd_ut: float) -> dt.datetime:
     if min_val == 60: min_val = 0; hh += 1
     return dt.datetime(y, m, d, hh, min_val, sec, tzinfo=dt.timezone.utc)
 
-def apparent_solar_datetime(utc_dt: dt.datetime, lon_deg: float) -> tuple[dt.datetime, float]:
+@st.cache_data
+def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
+    """
+    무거운 천문 계산과 만세력 산출을 수행하고 결과를 반환합니다.
+    (입력값이 같으면 재계산하지 않음)
+    """
+    b_time = parse_hms(time_str)
+    naive = dt.datetime.combine(birth_date, b_time)
+    
+    # 1. UTC 및 진태양시 변환
+    if basis_option.startswith("표준시"):
+        tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
+        local = naive.replace(tzinfo=ZoneInfo(tz_str))
+        utc_dt = local.astimezone(dt.timezone.utc)
+    else:
+        # LMT
+        utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
+
+    # 진태양시 (균시차 보정)
     jd_ut = jd_ut_from_utc(utc_dt)
     eot_days = swe.time_equ(jd_ut)
-    lat_dt = utc_dt + dt.timedelta(seconds=(lon_deg*240.0 + eot_days*86400.0))
-    return lat_dt, eot_days * 1440.0
-
-def year_pillar(jd_ut_birth: float):
-    birth_utc = utc_from_jd_ut(jd_ut_birth)
-    y = birth_utc.year
-    jd_start = swe.julday(y, 1, 1, 0.0, swe.GREG_CAL)
+    lat_dt = utc_dt + dt.timedelta(seconds=(lon*240.0 + eot_days*86400.0))
+    
+    # 2. 사주 팔자 산출
+    # 연주
+    birth_utc_for_year = utc_from_jd_ut(jd_ut)
+    y_year = birth_utc_for_year.year
+    jd_start = swe.julday(y_year, 1, 1, 0.0, swe.GREG_CAL)
     lichun = swe.solcross_ut(315.0, jd_start, swe.FLG_SWIEPH)
-    if jd_ut_birth < lichun: y -= 1
-    idx = (y - 1984) % 60 
-    return STEMS[idx % 10], BRANCHES[idx % 12], y
+    if jd_ut < lichun: y_year -= 1
+    y_idx = (y_year - 1984) % 60 
+    y_s, y_b = STEMS[y_idx % 10], BRANCHES[y_idx % 12]
 
-def month_pillar(jd_ut_birth: float, year_stem: str):
-    best = None
-    for name, lon, branch in MAJOR_TERMS:
-        jx = swe.solcross_ut(lon, jd_ut_birth - 40.0, swe.FLG_SWIEPH)
-        if jx <= jd_ut_birth:
-            if (best is None) or (jx > best[3]):
-                best = (name, lon, branch, jx)
-    if not best: return "甲", "寅", 0.0
-    m_branch = best[2]
-    order = ["寅","卯","辰","巳","午","未","申","酉","戌","亥","子","丑"]
-    m_idx = order.index(m_branch)
-    yin_stem = Y_STEM_TO_YIN_MONTH_STEM[year_stem]
-    m_stem = STEMS[(STEMS.index(yin_stem) + m_idx) % 10]
-    return m_stem, m_branch, best[3]
+    # 월주
+    best_term = None
+    for name, lon_deg, branch in MAJOR_TERMS:
+        jx = swe.solcross_ut(lon_deg, jd_ut - 40.0, swe.FLG_SWIEPH)
+        if jx <= jd_ut:
+            if (best_term is None) or (jx > best_term[3]):
+                best_term = (name, lon_deg, branch, jx)
+    
+    if not best_term: 
+        m_s, m_b, term_jd = "甲", "寅", 0.0
+    else:
+        m_branch = best_term[2]
+        term_jd = best_term[3]
+        order = ["寅","卯","辰","巳","午","未","申","酉","戌","亥","子","丑"]
+        m_idx_in_order = order.index(m_branch)
+        yin_stem = Y_STEM_TO_YIN_MONTH_STEM[y_s]
+        m_s = STEMS[(STEMS.index(yin_stem) + m_idx_in_order) % 10]
+        m_b = m_branch
 
-def day_pillar(lat_dt: dt.datetime):
+    # 일주 (야자시 적용: 23시 이후 다음 날)
     adj_dt = lat_dt
     if lat_dt.hour >= 23: adj_dt = lat_dt + dt.timedelta(days=1)
-    jd = swe.julday(adj_dt.year, adj_dt.month, adj_dt.day, 0, swe.GREG_CAL)
-    jdn = int(math.floor(jd + 0.5))
-    idx = (jdn + 49) % 60
-    return STEMS[idx % 10], BRANCHES[idx % 12], jdn
+    jd_day = swe.julday(adj_dt.year, adj_dt.month, adj_dt.day, 0, swe.GREG_CAL)
+    jdn = int(math.floor(jd_day + 0.5))
+    d_idx = (jdn + 49) % 60
+    d_s, d_b = STEMS[d_idx % 10], BRANCHES[d_idx % 12]
 
-def hour_pillar(lat_dt: dt.datetime, day_stem: str):
+    # 시주
     minutes = lat_dt.hour * 60 + lat_dt.minute + lat_dt.second/60.0
-    idx = int(((minutes + 60) // 120) % 12)
-    h_branch = BRANCHES[idx]
-    zi_stem = D_STEM_TO_ZI_HOUR_STEM[day_stem]
-    h_stem = STEMS[(STEMS.index(zi_stem) + idx) % 10]
-    return h_stem, h_branch
+    h_idx_val = int(((minutes + 60) // 120) % 12)
+    h_b = BRANCHES[h_idx_val]
+    zi_stem = D_STEM_TO_ZI_HOUR_STEM[d_s]
+    h_s = STEMS[(STEMS.index(zi_stem) + h_idx_val) % 10]
 
-def geocode_osm(place):
-    url = "https://nominatim.openstreetmap.org/search"
-    headers = {"User-Agent": "manseryeok-v2"}
-    try:
-        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=5)
-        if r.ok and r.json():
-            return float(r.json()[0]['lat']), float(r.json()[0]['lon'])
-    except:
-        pass
-    return None, None
+    s_list = [y_s, m_s, d_s, h_s]
+    b_list = [y_b, m_b, d_b, h_b]
+    b_year_val = y_year
 
-def load_db():
-    if os.path.exists(DB_FILE):
-        return pd.read_csv(DB_FILE)
-    return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
-
-def save_db(df):
-    df.to_csv(DB_FILE, index=False)
-
-# ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V6.0 - 10개 한 줄 & 원국 복구)
-# ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V6.0", layout="wide")
-
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
-    * { box-sizing: border-box; }
-    html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
+    # 3. 대운 계산
+    y_idx_int = STEMS.index(y_s)
+    is_yang = (y_idx_int % 2 == 0)
+    is_man = (gender == "남")
+    forward = (is_man and is_yang) or (not is_man and not is_yang)
     
-    /* [1] 상단 원국 (Four Pillars) - 중앙 정렬 & 밀착 복구 */
-    .total-flex-container {
-        display: flex; 
-        flex-direction: row; 
-        align-items: flex-start; 
-        justify-content: center !important; /* 항상 중앙 정렬! */
-        gap: 1px !important; /* 기둥 사이 1px */
-        flex-wrap: nowrap; 
-        overflow-x: auto; 
-        padding-bottom: 10px; 
-        margin-bottom: 20px;
-    }
+    curr_term_idx = -1
+    for i, (nm, deg, br) in enumerate(MAJOR_TERMS):
+        if br == m_b: curr_term_idx = i; break
     
-    .pillar-card, .luck-card {
-        background-color: transparent; padding: 0px; text-align: center; 
-        display: flex; flex-direction: column; align-items: center; 
-        gap: 1px; flex: 0 0 auto; border: none; min-width: 44px;
-    }
-    .luck-card { background-color: transparent !important; }
-
-    /* 글자 박스 */
-    .char-box {
-        width: 70px; height: 70px; border-radius: 12px;
-        display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 2.3em; font-weight: 900;
-        box-shadow: 0 3px 6px rgba(0,0,0,0.1); margin: 0 auto;
-    }
+    if forward:
+        nxt = (curr_term_idx + 1) % 12
+        nxt_jd = swe.solcross_ut(MAJOR_TERMS[nxt][1], jd_ut, swe.FLG_SWIEPH)
+        diff_days = nxt_jd - jd_ut
+    else:
+        diff_days = jd_ut - term_jd
     
-    /* 모바일 원국 크기 조절 */
-    @media only screen and (max-width: 600px) {
-        .char-box {
-            width: 12vw; height: 12vw; font-size: 5.5vw; 
-            border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
-        .pillar-card, .luck-card { min-width: 13vw; }
-        .small-text { font-size: 2.8vw; }
-        .unseong-badge { font-size: 2.2vw; padding: 0 2px; }
-        .jijanggan { font-size: 2.2vw; letter-spacing: -1px; }
-        .shinsal-container { max-width: 12vw; }
-        .badge { font-size: 1.8vw; padding: 0 1px; }
+    dw_num = diff_days / 3.0
+    
+    # 대운 리스트 생성
+    ms_idx = STEMS.index(m_s)
+    mb_idx = BRANCHES.index(m_b)
+    daewoon_list = []
+    for i in range(1, 11):
+        offset = i if forward else -i
+        ds = STEMS[(ms_idx + offset)%10]
+        db = BRANCHES[(mb_idx + offset)%12]
+        start_age = dw_num + (i-1)*10 if i > 1 else dw_num
+        daewoon_list.append({'s':ds, 'b':db, 'age':start_age})
+        
+    return {
+        's_list': s_list, 'b_list': b_list,
+        'b_year': b_year_val, 'dw_num': dw_num,
+        'daewoon': daewoon_list, 'forward': forward,
+        'd_s': d_s, # 일간 편의 참조
+        'lat_dt': lat_dt
     }
 
-    /* 오행 색상 */
-    .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
-    .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
-    .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
-    .bg-3 { background-color: #F5F5F5; color: #212121; border: 2px solid #E0E0E0; } 
-    .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
-    .badge-good { background-color: #D81B60; }
-    .badge-power { background-color: #546E7A; }
-    .badge-rel { background-color: #6D4C41; }
-    .badge-12 { background-color: #3949AB; }
-    .badge-gong { background-color: #424242; } 
-    
-    /* [2] 하단 대운/세운 (10개 한 줄 강제) */
-    
-    /* 가로 배열 컨테이너 */
-    div[data-testid="stHorizontalBlock"] {
-        display: flex !important;
-        flex-direction: row !important; /* 무조건 가로 */
-        flex-wrap: nowrap !important;   /* 줄바꿈 금지 */
-        width: 100% !important;
-        gap: 0px !important;
-        padding: 0px !important;
-        overflow: visible !important; /* 내용 잘림 방지 */
-    }
-    
-    /* 각 기둥 (버튼 포함) */
-    div[data-testid="column"] {
-        flex: 1 1 0px !important; /* 균등 분할 (Grow/Shrink 가능) */
-        width: 10% !important;    /* 10개니까 10% 강제 */
-        min-width: 0px !important; /* 최소 너비 제한 해제 (중요!) */
-        max-width: 100% !important;
-        padding: 0px !important;
-        margin: 0px !important;
-    }
-
-    /* 버튼 스타일 (투명 & 꽉 채움) */
-    div[data-testid="stHorizontalBlock"] button {
-        width: 100% !important;
-        min-width: 0px !important;
-        padding: 2px 0px !important;
-        margin: 0px !important;
-        height: auto !important;
-        line-height: 1.0 !important;
-        background-color: transparent !important;
-        border: none !important;
-        color: #333333;
-        border-radius: 0px !important;
-        box-shadow: none !important;
-        display: block !important;
-    }
-    /* 버튼 텍스트 크기 축소 (모바일에서 안 넘치게) */
-    div[data-testid="stHorizontalBlock"] button p {
-        font-size: 0.7rem !important; /* 기본 작게 */
-    }
-
-    /* 미니 타일 내용물 */
-    .mini-card-container {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        width: 100%; height: 100%; margin: 0px; padding: 0px;
-    }
-    .dw-active { background-color: #E3F2FD; } 
-    
-    .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
-    
-    .mini-char {
-        width: 90%; /* 옆이랑 살짝 띄우기 위해 90% */
-        aspect-ratio: 1 / 1; /* 정사각형 비율 유지 */
-        border-radius: 4px; 
-        display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.1em; font-weight: bold;
-        margin: 1px auto;
-    }
-    .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
-    .mini-age { font-size: 0.65em; font-weight: bold; color: #555; margin-top: 1px; }
-
-    /* 모바일 전용 미세 조정 */
-    @media only screen and (max-width: 600px) {
-        div[data-testid="stHorizontalBlock"] button p {
-            font-size: 2.5vw !important; /* 화면 비례 폰트 */
-        }
-        .mini-char { font-size: 4vw !important; width: 95% !important;}
-        .mini-sipsin, .mini-unseong { display: none; } /* 공간 부족 시 숨김 */
-        .mini-age { font-size: 2.5vw !important; }
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------------------------------------------------
-# HTML 생성 함수
-# ---------------------------------------------------------
-def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
+# =============================================================================
+# [MODULE 4] UI 렌더링 (VIEW)
+# =============================================================================
+def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
+    """HTML 생성 로직을 데이터 처리와 분리"""
     day_stem = s_list[2] 
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
@@ -439,11 +378,12 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     elif title == "일주": col_idx = 2
     elif title == "시주": col_idx = 3
     
-    stem_shinsal = get_shinsal(stem, 'stem', col_idx, s_list, b_list)
-    branch_shinsal = get_shinsal(branch, 'branch', col_idx, s_list, b_list)
-    pillar_shinsal = get_pillar_shinsal(stem, branch)
+    stem_shinsal = get_shinsal_list(stem, 'stem', col_idx, s_list, b_list)
+    branch_shinsal = get_shinsal_list(branch, 'branch', col_idx, s_list, b_list)
+    pillar_shinsal = get_ganji_shinsal(stem, branch)
     
     badges_html = ""
+    # 뱃지 순서 및 색상 로직
     for s in stem_shinsal:
         color = "badge-good" if "귀인" in s or "삼기" in s or "공" in s else "badge-power"
         badges_html += f'<span class="badge {color}">{s}</span>'
@@ -458,249 +398,308 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
+    return f"""
+    <div class="{card_cls}">
+        <div class="small-text">{title}</div>
+        <div class="small-text">{s_sipsin}</div>
+        <div class="char-box bg-{s_idx}">{stem}</div>
+        <div class="char-box bg-{b_idx}">{branch}</div>
+        {hiddens_html}
+        <div class="small-text">{b_sipsin}</div>
+        <div class="unseong-badge">{unseong}</div>
+        <div class="shinsal-container">{badges_html}</div>
+    </div>
+    """
 
-def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
+def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
     s_sipsin = get_sipsin(day_stem, stem)
     b_sipsin = get_sipsin(day_stem, branch)
     unseong = get_12unseong(day_stem, branch)
     active_cls = "dw-active" if is_active else ""
-    return f"""<div class="mini-card-container {active_cls}"><div class="mini-sipsin">{s_sipsin}</div><div class="mini-char bg-{s_idx}">{stem}</div><div class="mini-char bg-{b_idx}">{branch}</div><div class="mini-sipsin">{b_sipsin}</div><div class="mini-unseong">{unseong}</div><div class="mini-age">{bottom_label}</div></div>"""
+    return f"""
+    <div class="mini-card-container {active_cls}">
+        <div class="mini-sipsin">{s_sipsin}</div>
+        <div class="mini-char bg-{s_idx}">{stem}</div>
+        <div class="mini-char bg-{b_idx}">{branch}</div>
+        <div class="mini-sipsin">{b_sipsin}</div>
+        <div class="mini-unseong">{unseong}</div>
+        <div class="mini-age">{bottom_label}</div>
+    </div>
+    """
 
-# ---------------------------------------------------------
-# 6. 메인 앱
-# ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V6.0")
+# =============================================================================
+# [MODULE 5] 메인 애플리케이션 (MAIN APP)
+# =============================================================================
+def main():
+    st.set_page_config(page_title="초정밀 만세력 V5.3 (Optimized)", layout="wide")
 
-if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
-if 'db' not in st.session_state: st.session_state.db = load_db()
-
-def reset_luck_view():
-    st.session_state.show_daewoon = False
-    st.session_state.show_seun = False
-    st.session_state.sel_dw_idx = -1
-    st.session_state.sel_seun_year = -1
-
-if 'show_daewoon' not in st.session_state: st.session_state.show_daewoon = False
-if 'show_seun' not in st.session_state: st.session_state.show_seun = False
-
-with st.sidebar:
-    st.header("🗂️ 명식 보관함")
-    saved_list = st.session_state.db['이름'].tolist()
-    selected_profile = st.selectbox("불러오기", ["(선택 안함)"] + saved_list)
-    
-    def_name, def_gender, def_date, def_time, def_basis, def_place, def_lat, def_lon = \
-        "사용자", "여", dt.date(1998, 1, 27), "12:00", "표준시 (현대)", "Seoul", 37.5665, 126.9780
-
-    if selected_profile != "(선택 안함)":
-        row = st.session_state.db[st.session_state.db['이름'] == selected_profile].iloc[0]
-        def_name = row['이름']
-        def_gender = row['성별']
-        def_date = dt.datetime.strptime(str(row['생년월일']), "%Y-%m-%d").date()
-        def_time = row['시간']
-        def_basis = row['시각기준']
-        def_place = row['도시']
-        def_lat = float(row['위도'])
-        def_lon = float(row['경도'])
-
-    st.divider()
-    st.header("📝 정보 입력")
-    name = st.text_input("이름", def_name)
-    gender = st.radio("성별", ["남", "여"], index=0 if def_gender=="남" else 1, horizontal=True)
-    birth_date = st.date_input("생년월일", def_date, min_value=dt.date(1, 1, 1), max_value=dt.date(2100, 12, 31))
-    time_str = st.text_input("시간", def_time)
-    basis = st.radio("기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0 if "표준" in def_basis else 1)
-    
-    st.caption("장소")
-    col_p1, col_p2 = st.columns([2,1])
-    place = col_p1.text_input("도시", def_place, label_visibility="collapsed")
-    if col_p2.button("검색"):
-        lat, lon = geocode_osm(place)
-        if lat:
-            st.session_state.lat, st.session_state.lon = lat, lon
-            st.success("OK")
-            st.rerun()
-
-    lat = st.number_input("위도", value=st.session_state.get('lat', def_lat), format="%.4f")
-    lon = st.number_input("경도", value=st.session_state.get('lon', def_lon), format="%.4f")
-    
-    c1, c2 = st.columns(2)
-    if c1.button("🔥 명식 뽑기", type="primary"):
-        st.session_state.is_calculated = True
-        reset_luck_view()
-        st.rerun()
+    # CSS 스타일 (그대로 유지)
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
+        * { box-sizing: border-box; }
+        html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
-    if c2.button("💾 저장"):
-        new_row = {
-            "이름": name, "성별": gender, "생년월일": birth_date, "시간": time_str,
-            "시각기준": basis, "도시": place, "위도": lat, "경도": lon
+        .total-flex-container {
+            display: flex; flex-direction: row; align-items: flex-start; justify-content: center; 
+            gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
         }
-        df = st.session_state.db
-        if name in df['이름'].values:
-            df.loc[df['이름'] == name, :] = list(new_row.values())
-            st.toast(f"수정됨: {name}")
-        else:
-            new_df = pd.DataFrame([new_row])
-            df = pd.concat([df, new_df], ignore_index=True)
-            st.toast(f"저장됨: {name}")
-        st.session_state.db = df
-        save_db(df)
-        st.rerun()
+        .pillar-card, .luck-card {
+            background-color: transparent; padding: 0px; text-align: center; 
+            display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px;
+        }
+        .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+        .char-box {
+            width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center;
+            font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto;
+        }
+        .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
+        .unseong-badge { 
+            font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
+            padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;
+        }
+        .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
+        .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
+        .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
 
-    if selected_profile != "(선택 안함)":
-        if st.button(f"🗑️ 삭제"):
-            df = st.session_state.db
-            df = df[df['이름'] != selected_profile]
-            st.session_state.db = df
-            save_db(df)
-            st.toast("삭제됨")
-            st.rerun()
+        @media only screen and (min-width: 601px) {
+            .total-flex-container { gap: 4px; }
+            .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
+            .char-box { width: 72px; height: 72px; font-size: 2.3em; border-radius: 16px; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
+            .small-text { font-size: 0.9em; }
+            .unseong-badge { font-size: 0.8em; padding: 2px 6px; }
+            .jijanggan { font-size: 0.75em; letter-spacing: 1px; }
+            .shinsal-container { gap: 2px; margin-top: 4px; max-width: 70px; }
+            .badge { font-size: 0.65em; padding: 2px 5px; }
+        }
 
-if st.session_state.is_calculated:
-    try:
-        b_time = parse_hms(time_str)
-        naive = dt.datetime.combine(birth_date, b_time)
-        if basis.startswith("표준시"):
-            tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
-            local = naive.replace(tzinfo=ZoneInfo(tz_str))
-            utc_dt = local.astimezone(dt.timezone.utc)
-        else:
-            utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
+        .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
+        .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
+        .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
+        .bg-3 { background-color: #F5F5F5; color: #212121; border: 2px solid #E0E0E0; } 
+        .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
+        .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
+        .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
+        
+        div[data-testid="stHorizontalBlock"] button {
+            width: auto !important; min-width: 0px !important; padding: 4px 8px !important; margin: 0 auto !important;
+            height: auto !important; min-height: 0px !important; line-height: 1.2 !important;
+            background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 8px; display: block !important;
+        }
+        
+        .mini-card-container {
+            display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
+            cursor: pointer; margin-bottom: 5px; min-width: 30px; margin: 0 auto 5px auto;
+        }
+        .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
+        .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
+        .mini-char {
+            width: 32px; height: 32px; border-radius: 8px; display: flex; justify-content: center; align-items: center;
+            font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold; margin: 1px 0;
+        }
+        .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
+        .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
 
-        lat_dt, _ = apparent_solar_datetime(utc_dt, lon)
-        jd_ut = jd_ut_from_utc(utc_dt)
-        
-        y_s, y_b, b_year = year_pillar(jd_ut)
-        m_s, m_b, term_jd = month_pillar(jd_ut, y_s)
-        d_s, d_b, _ = day_pillar(lat_dt)
-        h_s, h_b = hour_pillar(lat_dt, d_s)
-        
-        s_list = [y_s, m_s, d_s, h_s]
-        b_list = [y_b, m_b, d_b, h_b]
-        
-        y_idx = STEMS.index(y_s)
-        is_yang = (y_idx % 2 == 0)
-        is_man = (gender == "남")
-        forward = (is_man and is_yang) or (not is_man and not is_yang)
-        
-        curr_idx = -1
-        for i, (nm, deg, br) in enumerate(MAJOR_TERMS):
-            if br == m_b: curr_idx = i; break
-        
-        if forward:
-            nxt = (curr_idx + 1) % 12
-            nxt_jd = swe.solcross_ut(MAJOR_TERMS[nxt][1], jd_ut, swe.FLG_SWIEPH)
-            diff = nxt_jd - jd_ut
-        else:
-            diff = jd_ut - term_jd
-        
-        dw_num_float = diff / 3.0
-        
-        ms_idx = STEMS.index(m_s)
-        mb_idx = BRANCHES.index(m_b)
-        daewoon_raw = []
-        for i in range(1, 11):
-            offset = i if forward else -i
-            ds = STEMS[(ms_idx + offset)%10]
-            db = BRANCHES[(mb_idx + offset)%12]
-            if i == 1: start_age = dw_num_float
-            else: start_age = dw_num_float + (i-1)*10
-            daewoon_raw.append({'s':ds, 'b':db, 'age':start_age})
-        
-        daewoon_visual = daewoon_raw[::-1]
-        if 'sel_dw_idx' not in st.session_state: st.session_state.sel_dw_idx = 9
+        @media only screen and (max-width: 600px) {
+            div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; overflow-x: auto !important; gap: 4px !important; padding-bottom: 5px; }
+            div[data-testid="column"] { flex: 0 0 auto !important; width: auto !important; min-width: 0px !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; }
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
-        sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
-        
-        if 'sel_seun_year' not in st.session_state:
-            st.session_state.sel_seun_year = b_year + int(sel_dw['age'])
+    st.title("🌌 초정밀 만세력 V5.3")
 
-        sel_seun = None
-        seun_visual = []
-        base_start_year = b_year + int(sel_dw['age'])
-        for k in range(10):
-            this_y = base_start_year + k
-            off = (this_y - 1984)
-            ss = STEMS[off%10]
-            bb = BRANCHES[off%12]
-            current_age_float = sel_dw['age'] + k
-            item = {'y':this_y, 'age': current_age_float, 's':ss, 'b':bb}
-            seun_visual.append(item)
-            if this_y == st.session_state.sel_seun_year:
-                sel_seun = item
-        
-        seun_visual = seun_visual[::-1]
-        if sel_seun is None: sel_seun = seun_visual[-1]
+    # 세션 상태 초기화
+    if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
+    if 'db' not in st.session_state: st.session_state.db = load_db()
+    if 'show_daewoon' not in st.session_state: st.session_state.show_daewoon = False
+    if 'show_seun' not in st.session_state: st.session_state.show_seun = False
+    if 'sel_dw_idx' not in st.session_state: st.session_state.sel_dw_idx = -1
+    if 'sel_seun_year' not in st.session_state: st.session_state.sel_seun_year = -1
 
-        st.write("") 
-        st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
+    def reset_luck_view():
+        st.session_state.show_daewoon = False
+        st.session_state.show_seun = False
+        st.session_state.sel_dw_idx = -1
+        st.session_state.sel_seun_year = -1
+
+    # --- 사이드바 ---
+    with st.sidebar:
+        st.header("🗂️ 명식 보관함")
+        saved_list = st.session_state.db['이름'].tolist()
+        selected_profile = st.selectbox("불러오기", ["(선택 안함)"] + saved_list)
         
-        dynamic_html = ""
-        
-        if st.session_state.show_seun and st.session_state.sel_seun_year != -1:
-            this_y = st.session_state.sel_seun_year
-            off = (this_y - 1984)
-            ss = STEMS[off%10]
-            bb = BRANCHES[off%12]
-            dynamic_html += generate_pillar_html(f"세운({this_y})", ss, bb, s_list, b_list, is_luck=True)
-            
-        if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
-            dw = daewoon_visual[st.session_state.sel_dw_idx]
-            dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            # 대운과 원국 사이 미세 간격
-            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
-            
-        dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
-        dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
-        dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
-        dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
-        
-        # [모바일용 클래스 적용] 확장 여부에 따라 'expanded-mode' 클래스 추가
-        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
-        
-        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
-        st.markdown(final_html, unsafe_allow_html=True)
+        def_name, def_gender, def_date, def_time, def_basis, def_place, def_lat, def_lon = \
+            "사용자", "여", dt.date(1998, 1, 27), "12:00", "표준시 (현대)", "Seoul", 37.5665, 126.9780
+
+        if selected_profile != "(선택 안함)":
+            row = st.session_state.db[st.session_state.db['이름'] == selected_profile].iloc[0]
+            def_name = row['이름']
+            def_gender = row['성별']
+            def_date = dt.datetime.strptime(str(row['생년월일']), "%Y-%m-%d").date()
+            def_time = row['시간']
+            def_basis = row['시각기준']
+            def_place = row['도시']
+            def_lat = float(row['위도'])
+            def_lon = float(row['경도'])
 
         st.divider()
+        st.header("📝 정보 입력")
+        name = st.text_input("이름", def_name)
+        gender = st.radio("성별", ["남", "여"], index=0 if def_gender=="남" else 1, horizontal=True)
+        birth_date = st.date_input("생년월일", def_date, min_value=dt.date(1, 1, 1), max_value=dt.date(2100, 12, 31))
+        time_str = st.text_input("시간", def_time)
+        basis = st.radio("기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0 if "표준" in def_basis else 1)
         
-        st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
-        st.caption(f"대운수: {dw_num_float:.2f} ({'순행' if forward else '역행'})")
-        
-        dw_cols = st.columns(10)
-        for i, dw in enumerate(daewoon_visual):
-            with dw_cols[i]:
-                label = f"{dw['age']:.2f}세"
-                if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
-                    st.session_state.sel_dw_idx = i
-                    st.session_state.show_daewoon = True
-                    st.session_state.show_seun = False 
-                    st.session_state.sel_seun_year = -1
-                    st.rerun()
-                
-                is_active = (i == st.session_state.sel_dw_idx) and st.session_state.show_daewoon
-                card = draw_mini_pillar(dw['s'], dw['b'], d_s, "", label, is_active)
-                st.markdown(card, unsafe_allow_html=True)
+        st.caption("장소")
+        col_p1, col_p2 = st.columns([2,1])
+        place = col_p1.text_input("도시", def_place, label_visibility="collapsed")
+        if col_p2.button("검색"):
+            lat, lon = geocode_osm_cached(place)
+            if lat:
+                st.session_state.lat, st.session_state.lon = lat, lon
+                st.success("OK")
+                st.rerun()
+            else:
+                st.error("실패")
 
-        if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
-            sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
-            st.divider()
-            st.markdown(f"#### 📅 **{sel_dw['s']}{sel_dw['b']}** 대운 기간의 세운 (⬅️)")
+        lat = st.number_input("위도", value=st.session_state.get('lat', def_lat), format="%.4f")
+        lon = st.number_input("경도", value=st.session_state.get('lon', def_lon), format="%.4f")
+        
+        c1, c2 = st.columns(2)
+        if c1.button("🔥 명식 뽑기", type="primary"):
+            st.session_state.is_calculated = True
+            reset_luck_view()
+            st.rerun()
             
-            seun_cols = st.columns(10)
-            for k, item in enumerate(seun_visual):
-                with seun_cols[k]:
-                    age_disp = f"{item['age']:.1f}세"
-                    btn_label = f"{item['y']}"
-                    if st.button(btn_label, key=f"seun_btn_{k}", use_container_width=True):
-                        st.session_state.sel_seun_year = item['y']
-                        st.session_state.show_seun = True
-                        st.rerun()
-                        
-                    is_sel = (item['y'] == st.session_state.sel_seun_year) and st.session_state.show_seun
-                    card = draw_mini_pillar(item['s'], item['b'], d_s, "", f"{item['y']}<br>({age_disp})", is_sel)
-                    st.markdown(card, unsafe_allow_html=True)
+        if c2.button("💾 저장"):
+            new_row = {
+                "이름": name, "성별": gender, "생년월일": birth_date, "시간": time_str,
+                "시각기준": basis, "도시": place, "위도": lat, "경도": lon
+            }
+            df = st.session_state.db
+            if name in df['이름'].values:
+                df.loc[df['이름'] == name, :] = list(new_row.values())
+                st.toast(f"수정됨: {name}")
+            else:
+                new_df = pd.DataFrame([new_row])
+                df = pd.concat([df, new_df], ignore_index=True)
+                st.toast(f"저장됨: {name}")
+            st.session_state.db = df
+            save_db(df)
+            st.rerun()
 
-    except Exception as e:
-        st.error(f"오류: {e}")
+        if selected_profile != "(선택 안함)":
+            if st.button(f"🗑️ 삭제"):
+                df = st.session_state.db
+                df = df[df['이름'] != selected_profile]
+                st.session_state.db = df
+                save_db(df)
+                st.toast("삭제됨")
+                st.rerun()
+
+    # --- 메인 결과 화면 ---
+    if st.session_state.is_calculated:
+        try:
+            # 1. 계산 수행 (캐싱됨)
+            data = calculate_saju_data(birth_date, time_str, basis, lat, lon, gender)
+            
+            # 데이터 언패킹
+            s_list = data['s_list']
+            b_list = data['b_list']
+            daewoon_list = data['daewoon']
+            daewoon_visual = daewoon_list[::-1] # 대운은 역순 정렬이 보편적
+            d_s = data['d_s']
+            
+            if st.session_state.sel_dw_idx == -1: 
+                st.session_state.sel_dw_idx = 9 # 초기값: 첫 대운
+            
+            sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
+            
+            # 세운 계산 (뷰 전용)
+            if st.session_state.sel_seun_year == -1:
+                st.session_state.sel_seun_year = data['b_year'] + int(sel_dw['age'])
+            
+            seun_visual = []
+            base_start_year = data['b_year'] + int(sel_dw['age'])
+            for k in range(10):
+                this_y = base_start_year + k
+                off = (this_y - 1984)
+                seun_visual.append({
+                    'y': this_y, 
+                    'age': sel_dw['age'] + k, 
+                    's': STEMS[off%10], 
+                    'b': BRANCHES[off%12]
+                })
+            seun_visual = seun_visual[::-1]
+
+            # 2. 결과 렌더링
+            st.write("") 
+            st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
+            
+            html_parts = []
+            
+            # (1) 세운/대운 선택 시 카드 추가
+            if st.session_state.show_seun and st.session_state.sel_seun_year != -1:
+                # 선택된 세운 찾기
+                target_seun = next((x for x in seun_visual if x['y'] == st.session_state.sel_seun_year), seun_visual[-1])
+                html_parts.append(render_pillar_html(f"세운({target_seun['y']})", target_seun['s'], target_seun['b'], s_list, b_list, is_luck=True))
+                
+            if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
+                dw = daewoon_visual[st.session_state.sel_dw_idx]
+                html_parts.append(render_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True))
+                html_parts.append('<div style="width: 15px; flex-shrink: 0;"></div>') # 간격
+
+            # (2) 원국 카드
+            pillars = [("시주", 3), ("일주", 2), ("월주", 1), ("연주", 0)]
+            for p_name, idx in pillars:
+                html_parts.append(render_pillar_html(p_name, s_list[idx], b_list[idx], s_list, b_list))
+            
+            st.markdown(f'<div class="total-flex-container">{"".join(html_parts)}</div>', unsafe_allow_html=True)
+
+            st.divider()
+            
+            # 3. 대운 리스트 뷰
+            direction_str = "순행" if data['forward'] else "역행"
+            st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
+            st.caption(f"대운수: {data['dw_num']:.2f} ({direction_str})")
+            
+            dw_cols = st.columns(10)
+            for i, dw in enumerate(daewoon_visual):
+                with dw_cols[i]:
+                    label = f"{dw['age']:.2f}세"
+                    if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
+                        st.session_state.sel_dw_idx = i
+                        st.session_state.show_daewoon = True
+                        st.session_state.show_seun = False 
+                        st.session_state.sel_seun_year = -1
+                        st.rerun()
+                    
+                    is_active = (i == st.session_state.sel_dw_idx) and st.session_state.show_daewoon
+                    st.markdown(render_mini_card(dw['s'], dw['b'], d_s, "", label, is_active), unsafe_allow_html=True)
+
+            # 4. 세운 리스트 뷰
+            if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
+                sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
+                st.divider()
+                st.markdown(f"#### 📅 **{sel_dw['s']}{sel_dw['b']}** 대운 기간의 세운 (⬅️)")
+                
+                seun_cols = st.columns(10)
+                for k, item in enumerate(seun_visual):
+                    with seun_cols[k]:
+                        age_disp = f"{item['age']:.1f}세"
+                        if st.button(f"{item['y']}", key=f"seun_btn_{k}", use_container_width=True):
+                            st.session_state.sel_seun_year = item['y']
+                            st.session_state.show_seun = True
+                            st.rerun()
+                            
+                        is_sel = (item['y'] == st.session_state.sel_seun_year) and st.session_state.show_seun
+                        st.markdown(render_mini_card(item['s'], item['b'], d_s, "", f"{item['y']}<br>({age_disp})", is_sel), unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"계산 중 오류가 발생했습니다: {e}")
+
+if __name__ == "__main__":
+    main()
