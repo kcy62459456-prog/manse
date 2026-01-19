@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V6.0 (Inline Block)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.0 (Grid Force)", layout="wide")
 
     st.markdown("""
     <style>
@@ -429,7 +429,6 @@ def main():
             .shinsal-container { gap: 2px; margin-top: 4px; max-width: 70px; }
             .badge { font-size: 0.65em; padding: 2px 5px; }
             
-            /* PC 버튼 기본 */
             div[data-testid="stHorizontalBlock"] button {
                 width: 100% !important; 
                 padding: 2px 0px !important; 
@@ -450,27 +449,27 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [핵심 수정 V6.0] 모바일 전용: Layout Engine 변경 (Flex -> Inline Block) */
+        /* [핵심 수정 V7.0] 모바일 전용: Grid Layout (Vertical Stacking 완전 차단) */
         @media only screen and (max-width: 600px) {
             
-            /* 1. 컨테이너: 블록으로 변경하고 줄바꿈 금지 */
+            /* 1. 컨테이너: Grid로 변경 및 가로 흐름 강제 (auto-flow: column) */
             div[data-testid="stHorizontalBlock"] {
-                display: block !important;       /* Flex 해제 */
-                white-space: nowrap !important;  /* 줄바꿈 금지 */
-                overflow-x: auto !important;     /* 가로 스크롤 */
+                display: grid !important;
+                grid-auto-flow: column !important; /* 무조건 옆으로 칸 만들기 */
+                overflow-x: auto !important;       /* 가로 스크롤 허용 */
+                justify-content: start !important; /* 왼쪽 정렬 */
+                gap: 4px !important;
                 width: 100% !important;
                 padding-bottom: 5px;
             }
             
-            /* 2. 기둥(Column): 인라인 블록으로 변경 (글자처럼 취급) */
+            /* 2. 기둥(Column): 최소 너비 확보 */
             div[data-testid="column"] {
-                display: inline-block !important; /* 옆으로 나란히 */
-                width: 50px !important;           /* 너비 고정 */
+                width: 50px !important;           
                 min-width: 50px !important;
                 max-width: 50px !important;
-                vertical-align: top !important;   /* 상단 정렬 */
-                margin-right: 2px !important;     /* 우측 간격 살짝 */
-                float: none !important;           /* 혹시 모를 float 해제 */
+                padding: 0 !important;
+                margin: 0 !important;
             }
 
             /* 3. 버튼(Button) */
@@ -503,7 +502,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V6.0")
+    st.title("🌌 초정밀 만세력 V7.0")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
