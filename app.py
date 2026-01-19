@@ -137,6 +137,7 @@ def calculate_voids(stem, branch):
     }
     return void_map.get(diff, [])
 
+# [V7.2 수정] 12신살 로직 전면 개편 (자리 불문, 조건 충족시 성립)
 def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
     shinsals = []
     y_s, m_s, d_s, h_s = s_list
@@ -144,23 +145,43 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
     
     if pillar_type == 'branch':
         me = pillar_char
-        groups = {
-            '수': {'frame': ['申','子','辰'], '역마': '寅', '도화': '酉', '화개': '辰'},
-            '화': {'frame': ['寅','午','戌'], '역마': '申', '도화': '卯', '화개': '戌'},
-            '금': {'frame': ['巳','酉','丑'], '역마': '亥', '도화': '午', '화개': '丑'},
-            '목': {'frame': ['亥','卯','未'], '역마': '巳', '도화': '子', '화개': '未'},
+        
+        # 삼합 국(Frame) 정의
+        frames = {
+            '수국': ['申', '子', '辰'], # 신자진 -> 화개(진), 역마(인), 도화(유)
+            '화국': ['寅', '午', '戌'], # 인오술 -> 화개(술), 역마(신), 도화(묘)
+            '금국': ['巳', '酉', '丑'], # 사유축 -> 화개(축), 역마(해), 도화(오)
+            '목국': ['亥', '卯', '未']  # 해묘미 -> 화개(미), 역마(사), 도화(자)
         }
-        active_frames = []
-        for basis in [y_b, d_b]:
-            for g_name, g_info in groups.items():
-                if basis in g_info['frame']:
-                    active_frames.append(g_info)
-                    
-        for g in active_frames:
-            if me == g['역마']: shinsals.append("역마")
-            if me == g['도화']: shinsals.append("도화")
-            if me == g['화개']: shinsals.append("화개")
 
+        # 1. 화개살 (Hwagae) - 삼합의 묘지(마지막 글자)
+        # 내 사주에 삼합의 글자가 하나라도 있고, 운에서 묘지가 오면 화개 성립
+        if me == '辰' and any(b in frames['수국'] for b in b_list): shinsals.append("화개")
+        elif me == '戌' and any(b in frames['화국'] for b in b_list): shinsals.append("화개")
+        elif me == '丑' and any(b in frames['금국'] for b in b_list): shinsals.append("화개")
+        elif me == '未' and any(b in frames['목국'] for b in b_list): shinsals.append("화개")
+
+        # 2. 역마살 (Yeokma) - 삼합의 생지를 충하는 글자 (첫 글자의 충)
+        # 신자진(수) -> 인(寅)이 역마
+        # 인오술(화) -> 신(申)이 역마
+        # 사유축(금) -> 해(亥)가 역마
+        # 해묘미(목) -> 사(巳)가 역마
+        if me == '寅' and any(b in frames['수국'] for b in b_list): shinsals.append("역마")
+        elif me == '申' and any(b in frames['화국'] for b in b_list): shinsals.append("역마")
+        elif me == '亥' and any(b in frames['금국'] for b in b_list): shinsals.append("역마")
+        elif me == '巳' and any(b in frames['목국'] for b in b_list): shinsals.append("역마")
+
+        # 3. 도화살 (Dohwa) - 삼합의 왕지를 충하는 건 아니지만, 삼합의 다음 계절 왕지 (연살)
+        # 신자진 -> 유(酉) 도화
+        # 인오술 -> 묘(卯) 도화
+        # 사유축 -> 오(午) 도화
+        # 해묘미 -> 자(子) 도화
+        if me == '酉' and any(b in frames['수국'] for b in b_list): shinsals.append("도화")
+        elif me == '卯' and any(b in frames['화국'] for b in b_list): shinsals.append("도화")
+        elif me == '午' and any(b in frames['금국'] for b in b_list): shinsals.append("도화")
+        elif me == '子' and any(b in frames['목국'] for b in b_list): shinsals.append("도화")
+
+        # 4. 기타 귀인 (기존 로직 유지)
         chonul_map = {
             "甲": ["丑","未"], "戊": ["丑","未"], "庚": ["丑","未"],
             "乙": ["子","申"], "己": ["子","申"],
@@ -399,7 +420,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V7.1 (High Contrast)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.2 (Smart Shinsal)", layout="wide")
 
     st.markdown("""
     <style>
@@ -413,7 +434,7 @@ def main():
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
         .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
         
-        /* [V7.1 수정] 텍스트 고대비 적용 (흰색/밝은회색) */
+        /* 고대비 텍스트 */
         .small-text { font-size: 0.7em; color: #ffffff !important; font-weight: 700; margin-bottom: 1px;}
         .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
         .jijanggan { font-size: 0.6em; color: #dddddd !important; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
@@ -452,21 +473,17 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [핵심 V7.0 유지] 모바일 전용: Grid Layout (Vertical Stacking 완전 차단) */
+        /* 모바일 전용: Grid Layout */
         @media only screen and (max-width: 600px) {
-            
-            /* 1. 컨테이너: Grid로 변경 및 가로 흐름 강제 (auto-flow: column) */
             div[data-testid="stHorizontalBlock"] {
                 display: grid !important;
-                grid-auto-flow: column !important; /* 무조건 옆으로 칸 만들기 */
-                overflow-x: auto !important;       /* 가로 스크롤 허용 */
-                justify-content: start !important; /* 왼쪽 정렬 */
+                grid-auto-flow: column !important; 
+                overflow-x: auto !important;       
+                justify-content: start !important; 
                 gap: 4px !important;
                 width: 100% !important;
                 padding-bottom: 5px;
             }
-            
-            /* 2. 기둥(Column): 최소 너비 확보 */
             div[data-testid="column"] {
                 width: 50px !important;           
                 min-width: 50px !important;
@@ -474,8 +491,6 @@ def main():
                 padding: 0 !important;
                 margin: 0 !important;
             }
-
-            /* 3. 버튼(Button) */
             div[data-testid="stHorizontalBlock"] button {
                 width: 48px !important;       
                 min-width: 48px !important;
@@ -487,7 +502,6 @@ def main():
             }
         }
         
-        /* 미니 카드 컨테이너 & [V7.1 텍스트 색상 수정] */
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
             cursor: pointer; margin-bottom: 5px; 
@@ -495,8 +509,6 @@ def main():
             margin: 0 auto 5px auto; 
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
-        
-        /* 여기가 핵심 변경 사항: 텍스트를 흰색 계열로 변경 */
         .mini-sipsin { font-size: 0.55em; color: #e0e0e0 !important; margin-bottom: 1px; white-space: nowrap; }
         .mini-char { 
             width: 28px; height: 28px; border-radius: 6px; display: flex; justify-content: center; align-items: center; 
@@ -507,7 +519,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력")
+    st.title("🌌 초정밀 만세력 V7.2")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
