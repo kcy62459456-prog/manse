@@ -341,7 +341,7 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     }
 
 # =============================================================================
-# [MODULE 4] UI 렌더링 (VIEW) - 여기가 문제였음. 안전하게 수정!
+# [MODULE 4] UI 렌더링 (VIEW) - 줄바꿈 및 공백 문제 해결!
 # =============================================================================
 def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -367,16 +367,12 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     branch_shinsal = get_shinsal_list(branch, 'branch', col_idx, s_list, b_list)
     pillar_shinsal = get_ganji_shinsal(stem, branch)
     
-    # [수정] 뱃지 HTML 생성을 더 안전하게 변경
     badges = []
-    
     for s in stem_shinsal:
         color = "badge-good" if ("귀인" in s or "삼기" in s or "공" in s) else "badge-power"
         badges.append(f'<span class="badge {color}">{s}</span>')
-        
     for s in pillar_shinsal:
         badges.append(f'<span class="badge badge-power">{s}</span>')
-        
     for s in branch_shinsal:
         if s in ["역마","도화","화개"]: color = "badge-12"
         elif "귀인" in s or "천의" in s: color = "badge-good"
@@ -387,26 +383,8 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     badges_html = "".join(badges)
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    # [수정] 최종 HTML 문자열 조립 방식 변경
-    html_template = """
-    <div class="{cls}">
-        <div class="small-text">{title}</div>
-        <div class="small-text">{s_sipsin}</div>
-        <div class="char-box bg-{s_idx}">{stem}</div>
-        <div class="char-box bg-{b_idx}">{branch}</div>
-        {hiddens}
-        <div class="small-text">{b_sipsin}</div>
-        <div class="unseong-badge">{unseong}</div>
-        <div class="shinsal-container">{badges}</div>
-    </div>
-    """
-    
-    return html_template.format(
-        cls=card_cls, title=title, s_sipsin=s_sipsin, 
-        s_idx=s_idx, stem=stem, b_idx=b_idx, branch=branch,
-        hiddens=hiddens_html, b_sipsin=b_sipsin, 
-        unseong=unseong, badges=badges_html
-    )
+    # [핵심 수정] 줄바꿈 없이 한 줄로 연결하여 HTML 파싱 오류 방지
+    return f'<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>'
 
 def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -416,51 +394,29 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
     unseong = get_12unseong(day_stem, branch)
     active_cls = "dw-active" if is_active else ""
     
-    return f"""
-    <div class="mini-card-container {active_cls}">
-        <div class="mini-sipsin">{s_sipsin}</div>
-        <div class="mini-char bg-{s_idx}">{stem}</div>
-        <div class="mini-char bg-{b_idx}">{branch}</div>
-        <div class="mini-sipsin">{b_sipsin}</div>
-        <div class="mini-unseong">{unseong}</div>
-        <div class="mini-age">{bottom_label}</div>
-    </div>
-    """
+    # [핵심 수정] 줄바꿈 없이 한 줄로 연결
+    return f'<div class="mini-card-container {active_cls}"><div class="mini-sipsin">{s_sipsin}</div><div class="mini-char bg-{s_idx}">{stem}</div><div class="mini-char bg-{b_idx}">{branch}</div><div class="mini-sipsin">{b_sipsin}</div><div class="mini-unseong">{unseong}</div><div class="mini-age">{bottom_label}</div></div>'
 
 # =============================================================================
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.3.5", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V5.4 (Fixed)", layout="wide")
 
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
-        
-        .total-flex-container {
-            display: flex; flex-direction: row; align-items: flex-start; justify-content: center; 
-            gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
-        }
-        .pillar-card, .luck-card {
-            background-color: transparent; padding: 0px; text-align: center; 
-            display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px;
-        }
+        .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
+        .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
-        .char-box {
-            width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center;
-            font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto;
-        }
+        .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
         .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-        .unseong-badge { 
-            font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
-            padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;
-        }
+        .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
         .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
         .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
         .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
-
         @media only screen and (min-width: 601px) {
             .total-flex-container { gap: 4px; }
             .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
@@ -471,7 +427,6 @@ def main():
             .shinsal-container { gap: 2px; margin-top: 4px; max-width: 70px; }
             .badge { font-size: 0.65em; padding: 2px 5px; }
         }
-
         .bg-0 { background-color: #C8E6C9; color: #004D40; border: 2px solid #81C784; } 
         .bg-1 { background-color: #FFCDD2; color: #B71C1C; border: 2px solid #E57373; } 
         .bg-2 { background-color: #FFF9C4; color: #E65100; border: 2px solid #FFF176; } 
@@ -479,26 +434,13 @@ def main():
         .bg-4 { background-color: #212121; color: #FFFFFF; border: 2px solid #616161; } 
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
-        
-        div[data-testid="stHorizontalBlock"] button {
-            width: auto !important; min-width: 0px !important; padding: 4px 8px !important; margin: 0 auto !important;
-            height: auto !important; min-height: 0px !important; line-height: 1.2 !important;
-            background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 8px; display: block !important;
-        }
-        
-        .mini-card-container {
-            display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
-            cursor: pointer; margin-bottom: 5px; min-width: 30px; margin: 0 auto 5px auto;
-        }
+        div[data-testid="stHorizontalBlock"] button { width: auto !important; min-width: 0px !important; padding: 4px 8px !important; margin: 0 auto !important; height: auto !important; min-height: 0px !important; line-height: 1.2 !important; background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 8px; display: block !important; }
+        .mini-card-container { display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; cursor: pointer; margin-bottom: 5px; min-width: 30px; margin: 0 auto 5px auto; }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
         .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
-        .mini-char {
-            width: 32px; height: 32px; border-radius: 8px; display: flex; justify-content: center; align-items: center;
-            font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold; margin: 1px 0;
-        }
+        .mini-char { width: 32px; height: 32px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold; margin: 1px 0; }
         .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
         .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
-
         @media only screen and (max-width: 600px) {
             div[data-testid="stHorizontalBlock"] { flex-wrap: nowrap !important; overflow-x: auto !important; gap: 4px !important; padding-bottom: 5px; }
             div[data-testid="column"] { flex: 0 0 auto !important; width: auto !important; min-width: 0px !important; display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: flex-start !important; }
@@ -506,7 +448,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.3.5")
+    st.title("🌌 초정밀 만세력 V5.4")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -628,7 +570,7 @@ def main():
             st.write("") 
             st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
             
-            # [수정] HTML 결합 방식 안전하게 처리
+            # [안전장치] HTML 리스트가 아니라 단일 문자열로 합치기
             html_parts = []
             
             if st.session_state.show_seun and st.session_state.sel_seun_year != -1:
@@ -644,6 +586,7 @@ def main():
             for p_name, idx in pillars:
                 html_parts.append(render_pillar_html(p_name, s_list[idx], b_list[idx], s_list, b_list))
             
+            # [핵심 수정] 줄바꿈 없이 붙이기
             final_html = "".join(html_parts)
             st.markdown(f'<div class="total-flex-container">{final_html}</div>', unsafe_allow_html=True)
 
