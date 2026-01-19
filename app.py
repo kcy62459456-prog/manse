@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.6 - Viewport Unit 적용)
+# 5. UI / CSS 스타일링 (V5.7 - True Square)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.6", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.7", layout="wide")
 
 st.markdown("""
 <style>
@@ -294,7 +294,6 @@ st.markdown("""
         gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
         -webkit-overflow-scrolling: touch;
     }
-    
     .pillar-card, .luck-card {
         background-color: transparent; padding: 0px; text-align: center; 
         display: flex; flex-direction: column; align-items: center; 
@@ -316,36 +315,48 @@ st.markdown("""
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 70px; }
     .badge { font-size: 0.6em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95; }
 
-    /* [핵심] 모바일 최적화 (600px 이하) - Viewport Width(vw) 사용 */
+    /* [PC 화면 확장] */
+    @media only screen and (min-width: 601px) {
+        .total-flex-container { gap: 4px; }
+        .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
+    }
+
+    /* [핵심] 모바일 최적화: 정사각형 타일 강제 */
     @media only screen and (max-width: 600px) {
+        /* 상단 원국 */
         .total-flex-container {
             justify-content: flex-start; 
             gap: 2px !important;
         }
-        
-        /* expanded 모드일 때 (대운/세운 켜짐) */
         .expanded-mode .char-box {
-            /* 화면 너비의 10% 미만으로 맞춰서 10개가 들어가게 함 */
-            width: 8vw !important; 
-            height: 8vw !important;
-            font-size: 4vw !important; /* 글자 크기도 화면 비례 */
+            width: 8vw !important; height: 8vw !important; /* 화면 비례 */
+            font-size: 4vw !important;
             border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .expanded-mode .pillar-card, .expanded-mode .luck-card {
-            min-width: 9vw !important; /* 기둥 너비 */
+            min-width: 9vw !important;
         }
-        .expanded-mode .small-text { font-size: 2.5vw !important; }
-        .expanded-mode .unseong-badge { font-size: 2.2vw !important; padding: 0px 2px; }
-        .expanded-mode .jijanggan { display: none; } /* 공간 부족 시 지장간 숨김 or 아주 작게 */
-        .expanded-mode .shinsal-container { max-width: 9vw; }
-        .expanded-mode .badge { font-size: 1.8vw !important; padding: 0px 1px; }
-
-        /* normal 모드 (4주만 있을 때) */
         .normal-mode .char-box {
             width: 16vw !important; height: 16vw !important; font-size: 8vw !important;
         }
         .normal-mode .pillar-card { min-width: 18vw !important; }
+        
+        /* 하단 리스트: 정사각형 버튼 */
+        div[data-testid="stHorizontalBlock"] button {
+            /* 너비는 flex에 맡기되, 높이를 종횡비로 제어 */
+            width: 100% !important;
+            height: auto !important;
+            aspect-ratio: 1 / 1 !important; /* [KEY] 정사각형 강제 */
+            padding: 0 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            min-height: 0px !important;
+        }
+        /* 버튼 안의 텍스트 크기도 줄임 */
+        div[data-testid="stHorizontalBlock"] button p {
+            font-size: 2.5vw !important;
+        }
     }
 
     /* 오행 색상 */
@@ -360,7 +371,7 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* 하단 대운/세운 리스트 (Zero Gap & Full Width) */
+    /* 하단 리스트 공통 */
     div[data-testid="stHorizontalBlock"] {
         gap: 0px !important; padding: 0px !important;
     }
@@ -368,13 +379,14 @@ st.markdown("""
         padding: 0px !important; margin: 0px !important; min-width: 0px !important;
         flex: 1 1 auto !important;
     }
-    div[data-testid="stHorizontalBlock"] button {
-        width: 100% !important; min-width: 0px !important; padding: 4px 0px !important; margin: 0px !important;
-        height: auto !important; line-height: 1.2 !important;
-        background-color: transparent !important; border: none !important;
-        color: #333333; border-radius: 0px !important; display: block !important;
-    }
     
+    /* PC/기본 버튼 스타일 */
+    div[data-testid="stHorizontalBlock"] button {
+        background-color: transparent !important; border: none !important;
+        color: #333333; border-radius: 0px !important;
+        margin: 0px !important; box-shadow: none !important;
+    }
+
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
@@ -382,25 +394,40 @@ st.markdown("""
     }
     .dw-active { background-color: #E3F2FD; } 
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
+    
+    /* 글자 박스 (타일) */
     .mini-char {
-        width: 100%; height: 34px; border-radius: 4px; 
+        width: 100%; /* 가로 꽉 채움 */
+        /* 높이는 JS나 aspect-ratio로 제어되지만 기본값 설정 */
+        height: 34px; 
+        border-radius: 4px; 
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold; margin: 1px 0;
+        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
+        margin: 1px 0;
     }
-    /* 모바일 타일 정사각형 만들기 (vw 활용) */
+    .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
+    .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
+
+    /* 모바일 타일 설정 */
     @media only screen and (max-width: 600px) {
+        div[data-testid="stHorizontalBlock"] {
+            flex-wrap: nowrap !important; overflow-x: auto !important;
+            gap: 0px !important;
+        }
         div[data-testid="column"] {
-            flex: 0 0 10vw !important; /* 화면의 10% */
-            width: 10vw !important;
-            min-width: 10vw !important;
+            /* 10개가 한 줄에 꽉 차게 (10%) */
+            flex: 0 0 10% !important; 
+            width: 10% !important; 
+            min-width: 0px !important;
         }
         .mini-char {
-            height: 9vw !important; /* 너비와 비슷하게 해서 정사각형 느낌 */
+            /* 정사각형 느낌을 위해 높이를 vw로 지정 */
+            height: 9vw !important; 
             font-size: 4vw !important;
         }
-        .mini-sipsin, .mini-unseong, .mini-age {
-            font-size: 2.5vw !important;
-        }
+        /* 정보 숨기기 or 아주 작게 (공간 확보) */
+        .mini-sipsin, .mini-unseong { display: none; } 
+        .mini-age { font-size: 2.5vw !important; margin-top: 0px; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -460,7 +487,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.6")
+st.title("🌌 초정밀 만세력 V5.7")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
