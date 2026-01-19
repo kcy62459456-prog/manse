@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.7 - True Square)
+# 5. UI / CSS 스타일링 (V5.8 - Square Scroll & Zero Gap)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.7", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.8", layout="wide")
 
 st.markdown("""
 <style>
@@ -288,7 +288,7 @@ st.markdown("""
     * { box-sizing: border-box; }
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* 1. 상단 원국 통합 컨테이너 */
+    /* 1. 상단 원국 */
     .total-flex-container {
         display: flex; flex-direction: row; align-items: flex-start; justify-content: center; 
         gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
@@ -299,64 +299,34 @@ st.markdown("""
         display: flex; flex-direction: column; align-items: center; 
         gap: 1px; flex: 0 0 auto; border: none; min-width: 44px;
     }
-    .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
+    .luck-card { background-color: transparent !important; }
 
-    /* 기본 PC 스타일 */
+    /* PC 기본 스타일 */
     .char-box {
         width: 70px; height: 70px; border-radius: 16px;
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; font-size: 2.3em; font-weight: 900;
         box-shadow: 0 3px 6px rgba(0,0,0,0.1); margin: 0 auto;
     }
-    
     .small-text { font-size: 0.8em; color: #333; font-weight: 700; margin-bottom: 1px;}
     .unseong-badge { font-size: 0.7em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 5px; border-radius: 8px; font-weight: bold; white-space: nowrap;}
     .jijanggan { font-size: 0.7em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 70px; }
     .badge { font-size: 0.6em; padding: 1px 3px; border-radius: 4px; font-weight: 600; color: white; opacity: 0.95; }
 
-    /* [PC 화면 확장] */
-    @media only screen and (min-width: 601px) {
-        .total-flex-container { gap: 4px; }
-        .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
-    }
-
-    /* [핵심] 모바일 최적화: 정사각형 타일 강제 */
+    /* 모바일 원국 최적화 */
     @media only screen and (max-width: 600px) {
-        /* 상단 원국 */
-        .total-flex-container {
-            justify-content: flex-start; 
-            gap: 2px !important;
+        .total-flex-container { justify-content: flex-start; gap: 1px !important; }
+        .pillar-card, .luck-card { min-width: 14vw; } /* 조금 넉넉하게 */
+        .char-box {
+            width: 12vw; height: 12vw; font-size: 6vw;
+            border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
-        .expanded-mode .char-box {
-            width: 8vw !important; height: 8vw !important; /* 화면 비례 */
-            font-size: 4vw !important;
-            border-radius: 8px;
-        }
-        .expanded-mode .pillar-card, .expanded-mode .luck-card {
-            min-width: 9vw !important;
-        }
-        .normal-mode .char-box {
-            width: 16vw !important; height: 16vw !important; font-size: 8vw !important;
-        }
-        .normal-mode .pillar-card { min-width: 18vw !important; }
-        
-        /* 하단 리스트: 정사각형 버튼 */
-        div[data-testid="stHorizontalBlock"] button {
-            /* 너비는 flex에 맡기되, 높이를 종횡비로 제어 */
-            width: 100% !important;
-            height: auto !important;
-            aspect-ratio: 1 / 1 !important; /* [KEY] 정사각형 강제 */
-            padding: 0 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            min-height: 0px !important;
-        }
-        /* 버튼 안의 텍스트 크기도 줄임 */
-        div[data-testid="stHorizontalBlock"] button p {
-            font-size: 2.5vw !important;
-        }
+        .small-text { font-size: 3vw; }
+        .unseong-badge { font-size: 2.5vw; padding: 0 2px; }
+        .jijanggan { font-size: 2.5vw; }
+        .shinsal-container { max-width: 12vw; }
+        .badge { font-size: 2vw; padding: 0 1px; }
     }
 
     /* 오행 색상 */
@@ -371,63 +341,67 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* 하단 리스트 공통 */
+    /* 2. 하단 리스트: Gap 0, Scrollable, Square */
     div[data-testid="stHorizontalBlock"] {
-        gap: 0px !important; padding: 0px !important;
+        flex-wrap: nowrap !important; 
+        overflow-x: auto !important; 
+        gap: 0px !important; 
+        padding: 0px !important;
+        align-items: flex-start !important;
     }
     div[data-testid="column"] {
-        padding: 0px !important; margin: 0px !important; min-width: 0px !important;
-        flex: 1 1 auto !important;
+        padding: 0px !important; margin: 0px !important; 
+        min-width: 0px !important;
+        flex: 0 0 auto !important;
     }
     
-    /* PC/기본 버튼 스타일 */
+    /* 버튼 스타일 초기화 */
     div[data-testid="stHorizontalBlock"] button {
+        width: 100% !important; padding: 0 !important; margin: 0 !important;
         background-color: transparent !important; border: none !important;
-        color: #333333; border-radius: 0px !important;
-        margin: 0px !important; box-shadow: none !important;
+        border-radius: 0 !important; box-shadow: none !important;
     }
 
+    /* 타일 내용 */
     .mini-card-container {
-        display: flex; flex-direction: column; align-items: center;
-        background: transparent; border: none; padding: 0px; 
-        cursor: pointer; margin-bottom: 0px; width: 100% !important;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 100%; height: 100%;
     }
     .dw-active { background-color: #E3F2FD; } 
-    .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     
-    /* 글자 박스 (타일) */
-    .mini-char {
-        width: 100%; /* 가로 꽉 채움 */
-        /* 높이는 JS나 aspect-ratio로 제어되지만 기본값 설정 */
-        height: 34px; 
-        border-radius: 4px; 
-        display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
-        margin: 1px 0;
-    }
-    .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
-    .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
-
-    /* 모바일 타일 설정 */
+    /* [핵심] 모바일 타일 - 정사각형 & 10개 정렬 */
     @media only screen and (max-width: 600px) {
-        div[data-testid="stHorizontalBlock"] {
-            flex-wrap: nowrap !important; overflow-x: auto !important;
-            gap: 0px !important;
-        }
+        /* 각 기둥을 화면의 10%로 고정 */
         div[data-testid="column"] {
-            /* 10개가 한 줄에 꽉 차게 (10%) */
-            flex: 0 0 10% !important; 
-            width: 10% !important; 
-            min-width: 0px !important;
+            width: 10vw !important;
+            flex: 0 0 10vw !important;
         }
+        /* 글자 박스도 너비에 맞춰 높이 설정 (정사각형 효과) */
         .mini-char {
-            /* 정사각형 느낌을 위해 높이를 vw로 지정 */
-            height: 9vw !important; 
-            font-size: 4vw !important;
+            width: 90% !important; 
+            height: 9vw !important; /* 너비와 비슷하게 */
+            font-size: 4.5vw !important;
+            border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Noto Serif KR', serif; font-weight: bold;
+            margin: 1px auto !important;
         }
-        /* 정보 숨기기 or 아주 작게 (공간 확보) */
-        .mini-sipsin, .mini-unseong { display: none; } 
-        .mini-age { font-size: 2.5vw !important; margin-top: 0px; }
+        .mini-sipsin, .mini-unseong { display: none; } /* 공간 확보 위해 숨김 */
+        .mini-age { font-size: 2.5vw !important; font-weight: bold; color: #555; margin-top: 2px; }
+    }
+
+    /* PC 타일 */
+    @media only screen and (min-width: 601px) {
+        div[data-testid="column"] { width: 45px !important; flex: 0 0 45px !important; }
+        .mini-char {
+            width: 36px; height: 36px; font-size: 1.2em; 
+            border-radius: 8px; margin: 2px auto;
+            display: flex; justify-content: center; align-items: center;
+            font-family: 'Noto Serif KR', serif; font-weight: bold;
+        }
+        .mini-sipsin { font-size: 0.6em; color: #666; }
+        .mini-unseong { font-size: 0.6em; color: #888; }
+        .mini-age { font-size: 0.7em; font-weight: bold; margin-top: 3px; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -487,7 +461,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.7")
+st.title("🌌 초정밀 만세력 V5.8")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -664,16 +638,14 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 10px;"></div>' 
+            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
         dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
         dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
         
-        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
-        
-        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
+        final_html = f'<div class="total-flex-container">{dynamic_html}</div>'
         st.markdown(final_html, unsafe_allow_html=True)
 
         st.divider()
