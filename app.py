@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.0 - 버튼 다이어트)
+# 5. UI / CSS 스타일링 (V5.1 - 진짜 슬림 버튼)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.0", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.1", layout="wide")
 
 st.markdown("""
 <style>
@@ -288,13 +288,13 @@ st.markdown("""
     * { box-sizing: border-box; }
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* 1. 통합 컨테이너: 항상 중앙 정렬 (모바일에서도) */
+    /* 1. 통합 컨테이너 */
     .total-flex-container {
         display: flex;
         flex-direction: row;
         align-items: flex-start;
-        justify-content: center; /* 모바일에서도 중앙 정렬! */
-        gap: 1px; /* 초밀착 */
+        justify-content: center; 
+        gap: 1px;
         flex-wrap: nowrap;
         overflow-x: auto;
         padding-bottom: 10px;
@@ -310,42 +310,38 @@ st.markdown("""
         gap: 1px;
         flex: 0 0 auto;
         border: none;
-        min-width: 44px; /* 모바일 최소 너비 */
+        min-width: 44px;
+    }
+    
+    /* [수정] 대운/세운 카드 투명화 (원국과 동일하게) */
+    .luck-card {
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
     }
 
     .char-box {
-        width: 42px; height: 42px; /* 모바일 박스 크기 */
+        width: 42px; height: 42px;
         border-radius: 10px;
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; 
-        font-size: 1.6em; /* 모바일 폰트 */
+        font-size: 1.6em;
         font-weight: 900;
         box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         margin: 0 auto;
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { 
-        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
-        padding: 1px 3px; border-radius: 6px; font-weight: bold;
-        white-space: nowrap;
-    }
+    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;}
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
-    
-    .shinsal-container { 
-        display: flex; flex-wrap: wrap; justify-content: center; 
-        gap: 1px; margin-top: 1px; max-width: 42px; 
-    }
+    .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
 
-    /* [PC 화면 확장] */
+    /* [PC 확장] */
     @media only screen and (min-width: 601px) {
         .total-flex-container { gap: 4px; }
         .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
-        .char-box {
-            width: 72px; height: 72px; font-size: 2.3em;
-            border-radius: 16px; box-shadow: 0 3px 6px rgba(0,0,0,0.15); 
-        }
+        .char-box { width: 72px; height: 72px; font-size: 2.3em; border-radius: 16px; box-shadow: 0 3px 6px rgba(0,0,0,0.15); }
         .small-text { font-size: 0.9em; }
         .unseong-badge { font-size: 0.8em; padding: 2px 6px; }
         .jijanggan { font-size: 0.75em; letter-spacing: 1px; }
@@ -365,30 +361,46 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* [수정: 핵심] 하단 버튼 강제 다이어트 (Width Auto) */
+    /* [핵심] 하단 버튼 강제 다이어트 (CSS Injection) */
+    /* Streamlit의 버튼은 'button' 태그로 렌더링됨. 이를 타겟팅하여 스타일 덮어쓰기 */
     div[data-testid="stHorizontalBlock"] button {
-        width: auto !important;       /* 꽉 차지 않게 */
-        min-width: 0px !important;    /* 최소 너비 해제 */
-        padding: 2px 6px !important;  /* 내부 여백 최소화 */
-        margin: 0px !important;       /* 바깥 여백 제거 */
-        display: inline-block !important;
-        white-space: nowrap !important; /* 줄바꿈 금지 */
+        width: auto !important;        /* 1. 너비를 내용물만큼만 */
+        min-width: 0px !important;     /* 2. 최소 너비 해제 */
+        padding: 4px 8px !important;   /* 3. 패딩 축소 */
+        margin: 0px !important;        /* 4. 마진 제거 */
+        height: auto !important;       /* 5. 높이 자동 */
+        min-height: 0px !important;
+        line-height: 1.2 !important;
+        background-color: #ffffff;
+        border: 1px solid #eeeeee;
+        color: #333333;
+        border-radius: 8px;
     }
-    
+    /* 버튼 호버 효과 */
+    div[data-testid="stHorizontalBlock"] button:hover {
+        border-color: #ff4b4b;
+        color: #ff4b4b;
+    }
+    /* 버튼 클릭 시(active) 효과는 Streamlit 내부 상태라 CSS만으로는 완벽 제어 어렵지만 시도 */
+    div[data-testid="stHorizontalBlock"] button:focus {
+        border-color: #ff4b4b;
+        box-shadow: none;
+    }
+
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
         cursor: pointer; margin-bottom: 5px; 
-        min-width: 30px; /* 카드 자체 너비도 축소 */
+        min-width: 30px; 
     }
-    .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
     
+    /* 선택된 항목 표시용 (draw_mini_pillar 함수에서 사용 안함 - 버튼으로 대체됨) */
+    /* 하지만 미니 카드가 버튼 안에 들어갈 경우를 대비 */
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
     .mini-char {
-        width: 30px; height: 30px; /* 박스 크기 축소 */
-        border-radius: 8px;
+        width: 32px; height: 32px; border-radius: 8px;
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; font-size: 1.1em; font-weight: bold;
+        font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
         margin: 1px 0;
     }
     .mini-unseong { font-size: 0.6em; color: #888; margin-top: 1px; }
@@ -397,18 +409,17 @@ st.markdown("""
     @media only screen and (max-width: 600px) {
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important; overflow-x: auto !important;
-            gap: 2px !important; padding-bottom: 5px;
+            gap: 4px !important; padding-bottom: 5px;
         }
-        /* 컬럼이 너무 넓어지지 않게 */
         div[data-testid="column"] {
-            flex: 0 0 auto !important; width: auto !important; min-width: 30px !important;
+            flex: 0 0 auto !important; width: auto !important; min-width: 0px !important;
         }
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# HTML 생성 함수 (CSS 클래스로만 제어 - 인라인 스타일 제거)
+# HTML 생성 함수 (투명화 적용)
 # ---------------------------------------------------------
 def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -421,7 +432,6 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     unseong = get_12unseong(day_stem, branch)
     
-    # [수정] 지장간/신살 무조건 표시
     hiddens = JIJANGGAN.get(branch, [])
     hiddens_html = f'<div class="jijanggan">{" ".join(hiddens)}</div>'
     
@@ -448,9 +458,9 @@ def generate_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
         else: color = "badge-rel"
         badges_html += f'<span class="badge {color}">{s}</span>'
     
+    # [수정] card_cls는 이제 스타일에서 투명하게 처리됨
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    # [수정] 인라인 스타일 제거 -> CSS @media 쿼리가 알아서 함
     return f"""<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>"""
 
 def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=False):
@@ -465,7 +475,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.0")
+st.title("🌌 초정밀 만세력 V5.1")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -642,17 +652,14 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 10px;"></div>' 
+            dynamic_html += '<div style="width: 8px;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
         dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
         dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
         
-        # [모바일용 클래스 적용] 확장 여부에 따라 'expanded-mode' 클래스 추가
-        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
-        
-        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
+        final_html = f'<div class="total-flex-container">{dynamic_html}</div>'
         st.markdown(final_html, unsafe_allow_html=True)
 
         st.divider()
@@ -664,6 +671,7 @@ if st.session_state.is_calculated:
         for i, dw in enumerate(daewoon_visual):
             with dw_cols[i]:
                 label = f"{dw['age']:.2f}세"
+                # 버튼을 그리는 로직은 동일하지만, CSS가 버튼 스타일을 강제로 바꿈
                 if st.button(label, key=f"dw_btn_{i}", use_container_width=True):
                     st.session_state.sel_dw_idx = i
                     st.session_state.show_daewoon = True
