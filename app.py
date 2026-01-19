@@ -67,7 +67,6 @@ def save_db(df):
 
 @st.cache_data(ttl=3600)  # 1시간 캐싱
 def geocode_osm_cached(place):
-    """지오코딩 결과를 캐싱하여 API 호출 최소화 및 속도 향상"""
     url = "https://nominatim.openstreetmap.org/search"
     headers = {"User-Agent": "manseryeok-v3-optimized"}
     try:
@@ -108,11 +107,10 @@ def get_sipsin(day_stem: str, target: str) -> str:
     d_pol = get_polarity(day_stem)
     t_pol = get_polarity(target)
     
-    # 지지 음양 보정 (체용론 적용)
-    if target == "子": t_pol = 0  # 양수지만 체는 음
-    elif target == "亥": t_pol = 1 # 음수지만 체는 양
-    elif target == "午": t_pol = 1 # 양화지만 체는 음
-    elif target == "巳": t_pol = 0 # 음화지만 체는 양
+    if target == "子": t_pol = 0
+    elif target == "亥": t_pol = 1
+    elif target == "午": t_pol = 1
+    elif target == "巳": t_pol = 0
     
     is_diff = 1 if d_pol != t_pol else 0
     return SIPSIN_NAMES[relation][is_diff]
@@ -140,7 +138,6 @@ def calculate_voids(stem, branch):
     return void_map.get(diff, [])
 
 def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
-    """신살 계산 로직 분리"""
     shinsals = []
     y_s, m_s, d_s, h_s = s_list
     y_b, m_b, d_b, h_b = b_list
@@ -154,7 +151,6 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
             '목': {'frame': ['亥','卯','未'], '역마': '巳', '도화': '子', '화개': '未'},
         }
         active_frames = []
-        # 연지, 일지 기준으로 신살 프레임 확인
         for basis in [y_b, d_b]:
             for g_name, g_info in groups.items():
                 if basis in g_info['frame']:
@@ -192,7 +188,6 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
                       "午":"丑", "未":"寅", "申":"卯", "酉":"子", "戌":"巳", "亥":"辰"}
         if me == gwimun_map.get(d_b): shinsals.append("귀문")
         
-        # 공망 계산
         if col_idx == 2: target_voids = calculate_voids(y_s, y_b) 
         else: target_voids = calculate_voids(d_s, d_b) 
         if me in target_voids: shinsals.append("공망")
@@ -204,7 +199,6 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
         elif {"辛","壬","癸"}.issubset(s_set): shinsals.append("삼기")
         elif {"乙","丙","丁"}.issubset(s_set): shinsals.append("삼기")
         
-        # 월덕/천덕/월공
         wd_map = {}
         if m_b in ['寅','午','戌']: wd_map = '丙'
         elif m_b in ['申','子','辰']: wd_map = '壬'
@@ -232,7 +226,7 @@ def get_ganji_shinsal(stem, branch):
     if ganji in ["甲辰", "乙未", "丙戌", "丁丑", "戊辰", "壬戌", "癸丑"]: res.append("백호")
     return res
 
-# --- 천문 계산 (캐싱 적용을 위해 로직 캡슐화) ---
+# --- 천문 계산 ---
 def jd_ut_from_utc(dt_utc: dt.datetime) -> float:
     hour = dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600
     return swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, hour, swe.GREG_CAL)
@@ -248,28 +242,20 @@ def utc_from_jd_ut(jd_ut: float) -> dt.datetime:
 
 @st.cache_data
 def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
-    """
-    무거운 천문 계산과 만세력 산출을 수행하고 결과를 반환합니다.
-    (입력값이 같으면 재계산하지 않음)
-    """
     b_time = parse_hms(time_str)
     naive = dt.datetime.combine(birth_date, b_time)
     
-    # 1. UTC 및 진태양시 변환
     if basis_option.startswith("표준시"):
         tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
         local = naive.replace(tzinfo=ZoneInfo(tz_str))
         utc_dt = local.astimezone(dt.timezone.utc)
     else:
-        # LMT
         utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
 
-    # 진태양시 (균시차 보정)
     jd_ut = jd_ut_from_utc(utc_dt)
     eot_days = swe.time_equ(jd_ut)
     lat_dt = utc_dt + dt.timedelta(seconds=(lon*240.0 + eot_days*86400.0))
     
-    # 2. 사주 팔자 산출
     # 연주
     birth_utc_for_year = utc_from_jd_ut(jd_ut)
     y_year = birth_utc_for_year.year
@@ -298,7 +284,7 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
         m_s = STEMS[(STEMS.index(yin_stem) + m_idx_in_order) % 10]
         m_b = m_branch
 
-    # 일주 (야자시 적용: 23시 이후 다음 날)
+    # 일주
     adj_dt = lat_dt
     if lat_dt.hour >= 23: adj_dt = lat_dt + dt.timedelta(days=1)
     jd_day = swe.julday(adj_dt.year, adj_dt.month, adj_dt.day, 0, swe.GREG_CAL)
@@ -317,7 +303,7 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     b_list = [y_b, m_b, d_b, h_b]
     b_year_val = y_year
 
-    # 3. 대운 계산
+    # 대운
     y_idx_int = STEMS.index(y_s)
     is_yang = (y_idx_int % 2 == 0)
     is_man = (gender == "남")
@@ -336,7 +322,6 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     
     dw_num = diff_days / 3.0
     
-    # 대운 리스트 생성
     ms_idx = STEMS.index(m_s)
     mb_idx = BRANCHES.index(m_b)
     daewoon_list = []
@@ -351,15 +336,14 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
         's_list': s_list, 'b_list': b_list,
         'b_year': b_year_val, 'dw_num': dw_num,
         'daewoon': daewoon_list, 'forward': forward,
-        'd_s': d_s, # 일간 편의 참조
+        'd_s': d_s,
         'lat_dt': lat_dt
     }
 
 # =============================================================================
-# [MODULE 4] UI 렌더링 (VIEW)
+# [MODULE 4] UI 렌더링 (VIEW) - 여기가 문제였음. 안전하게 수정!
 # =============================================================================
 def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
-    """HTML 생성 로직을 데이터 처리와 분리"""
     day_stem = s_list[2] 
     s_idx = get_element_idx(stem)
     b_idx = get_element_idx(branch)
@@ -370,7 +354,8 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     
     unseong = get_12unseong(day_stem, branch)
     hiddens = JIJANGGAN.get(branch, [])
-    hiddens_html = f'<div class="jijanggan">{" ".join(hiddens)}</div>'
+    hiddens_str = " ".join(hiddens)
+    hiddens_html = f'<div class="jijanggan">{hiddens_str}</div>'
     
     col_idx = -1
     if title == "연주": col_idx = 0
@@ -382,34 +367,46 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     branch_shinsal = get_shinsal_list(branch, 'branch', col_idx, s_list, b_list)
     pillar_shinsal = get_ganji_shinsal(stem, branch)
     
-    badges_html = ""
-    # 뱃지 순서 및 색상 로직
+    # [수정] 뱃지 HTML 생성을 더 안전하게 변경
+    badges = []
+    
     for s in stem_shinsal:
-        color = "badge-good" if "귀인" in s or "삼기" in s or "공" in s else "badge-power"
-        badges_html += f'<span class="badge {color}">{s}</span>'
+        color = "badge-good" if ("귀인" in s or "삼기" in s or "공" in s) else "badge-power"
+        badges.append(f'<span class="badge {color}">{s}</span>')
+        
     for s in pillar_shinsal:
-        badges_html += f'<span class="badge badge-power">{s}</span>'
+        badges.append(f'<span class="badge badge-power">{s}</span>')
+        
     for s in branch_shinsal:
         if s in ["역마","도화","화개"]: color = "badge-12"
         elif "귀인" in s or "천의" in s: color = "badge-good"
         elif s == "공망": color = "badge-gong"
         else: color = "badge-rel"
-        badges_html += f'<span class="badge {color}">{s}</span>'
+        badges.append(f'<span class="badge {color}">{s}</span>')
     
+    badges_html = "".join(badges)
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    return f"""
-    <div class="{card_cls}">
+    # [수정] 최종 HTML 문자열 조립 방식 변경
+    html_template = """
+    <div class="{cls}">
         <div class="small-text">{title}</div>
         <div class="small-text">{s_sipsin}</div>
         <div class="char-box bg-{s_idx}">{stem}</div>
         <div class="char-box bg-{b_idx}">{branch}</div>
-        {hiddens_html}
+        {hiddens}
         <div class="small-text">{b_sipsin}</div>
         <div class="unseong-badge">{unseong}</div>
-        <div class="shinsal-container">{badges_html}</div>
+        <div class="shinsal-container">{badges}</div>
     </div>
     """
+    
+    return html_template.format(
+        cls=card_cls, title=title, s_sipsin=s_sipsin, 
+        s_idx=s_idx, stem=stem, b_idx=b_idx, branch=branch,
+        hiddens=hiddens_html, b_sipsin=b_sipsin, 
+        unseong=unseong, badges=badges_html
+    )
 
 def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -418,6 +415,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
     b_sipsin = get_sipsin(day_stem, branch)
     unseong = get_12unseong(day_stem, branch)
     active_cls = "dw-active" if is_active else ""
+    
     return f"""
     <div class="mini-card-container {active_cls}">
         <div class="mini-sipsin">{s_sipsin}</div>
@@ -433,9 +431,8 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.3 (Optimized)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V5.3.5", layout="wide")
 
-    # CSS 스타일 (그대로 유지)
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
@@ -509,9 +506,8 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.3")
+    st.title("🌌 초정밀 만세력 V5.3.5")
 
-    # 세션 상태 초기화
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
     if 'show_daewoon' not in st.session_state: st.session_state.show_daewoon = False
@@ -525,7 +521,6 @@ def main():
         st.session_state.sel_dw_idx = -1
         st.session_state.sel_seun_year = -1
 
-    # --- 사이드바 ---
     with st.sidebar:
         st.header("🗂️ 명식 보관함")
         saved_list = st.session_state.db['이름'].tolist()
@@ -600,25 +595,20 @@ def main():
                 st.toast("삭제됨")
                 st.rerun()
 
-    # --- 메인 결과 화면 ---
     if st.session_state.is_calculated:
         try:
-            # 1. 계산 수행 (캐싱됨)
             data = calculate_saju_data(birth_date, time_str, basis, lat, lon, gender)
-            
-            # 데이터 언패킹
             s_list = data['s_list']
             b_list = data['b_list']
             daewoon_list = data['daewoon']
-            daewoon_visual = daewoon_list[::-1] # 대운은 역순 정렬이 보편적
+            daewoon_visual = daewoon_list[::-1]
             d_s = data['d_s']
             
             if st.session_state.sel_dw_idx == -1: 
-                st.session_state.sel_dw_idx = 9 # 초기값: 첫 대운
+                st.session_state.sel_dw_idx = 9
             
             sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
             
-            # 세운 계산 (뷰 전용)
             if st.session_state.sel_seun_year == -1:
                 st.session_state.sel_seun_year = data['b_year'] + int(sel_dw['age'])
             
@@ -635,33 +625,30 @@ def main():
                 })
             seun_visual = seun_visual[::-1]
 
-            # 2. 결과 렌더링
             st.write("") 
             st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
             
+            # [수정] HTML 결합 방식 안전하게 처리
             html_parts = []
             
-            # (1) 세운/대운 선택 시 카드 추가
             if st.session_state.show_seun and st.session_state.sel_seun_year != -1:
-                # 선택된 세운 찾기
                 target_seun = next((x for x in seun_visual if x['y'] == st.session_state.sel_seun_year), seun_visual[-1])
                 html_parts.append(render_pillar_html(f"세운({target_seun['y']})", target_seun['s'], target_seun['b'], s_list, b_list, is_luck=True))
                 
             if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
                 dw = daewoon_visual[st.session_state.sel_dw_idx]
                 html_parts.append(render_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True))
-                html_parts.append('<div style="width: 15px; flex-shrink: 0;"></div>') # 간격
+                html_parts.append('<div style="width: 15px; flex-shrink: 0;"></div>')
 
-            # (2) 원국 카드
             pillars = [("시주", 3), ("일주", 2), ("월주", 1), ("연주", 0)]
             for p_name, idx in pillars:
                 html_parts.append(render_pillar_html(p_name, s_list[idx], b_list[idx], s_list, b_list))
             
-            st.markdown(f'<div class="total-flex-container">{"".join(html_parts)}</div>', unsafe_allow_html=True)
+            final_html = "".join(html_parts)
+            st.markdown(f'<div class="total-flex-container">{final_html}</div>', unsafe_allow_html=True)
 
             st.divider()
             
-            # 3. 대운 리스트 뷰
             direction_str = "순행" if data['forward'] else "역행"
             st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
             st.caption(f"대운수: {data['dw_num']:.2f} ({direction_str})")
@@ -680,7 +667,6 @@ def main():
                     is_active = (i == st.session_state.sel_dw_idx) and st.session_state.show_daewoon
                     st.markdown(render_mini_card(dw['s'], dw['b'], d_s, "", label, is_active), unsafe_allow_html=True)
 
-            # 4. 세운 리스트 뷰
             if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
                 sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
                 st.divider()
