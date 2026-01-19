@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V5.8 (Fix Container Width)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V5.9 (Left Align Force)", layout="wide")
 
     st.markdown("""
     <style>
@@ -441,31 +441,30 @@ def main():
         /* [핵심 수정] 모바일 전용 강력 스타일 */
         @media only screen and (max-width: 600px) {
             
-            /* 1. 컨테이너 */
+            /* 1. 컨테이너: 왼쪽 정렬 (justify-content: flex-start) + 간격 축소 */
             div[data-testid="stHorizontalBlock"] {
                 display: flex !important;
                 flex-direction: row !important;
                 flex-wrap: nowrap !important;
                 overflow-x: auto !important;
-                gap: 2px !important;
+                justify-content: flex-start !important; /* [중요] 왼쪽으로 밀착! */
+                gap: 3px !important;
                 width: 100% !important;
                 align-items: flex-start !important;
             }
             
-            /* 2. 기둥(Column): 절대 크기 고정 */
+            /* 2. 기둥(Column): 내용물 크기에 자동 맞춤 (Auto) */
             div[data-testid="column"] {
-                flex: 0 0 50px !important;     /* 50px 고정 */
-                width: 50px !important;
-                min-width: 50px !important;
-                max-width: 50px !important;
+                flex: 0 0 auto !important;     /* 늘어나지 않고(0) 줄어들지 않고(0) 자동(auto) */
+                width: auto !important;        /* 고정 픽셀 대신 auto로 변경 */
+                min-width: 48px !important;    /* 최소 폭 확보 */
                 padding: 0 !important;
                 margin: 0 !important;
-                overflow: hidden !important;
             }
 
-            /* 3. 버튼(Button): 기둥 크기에 맞춰 축소 */
+            /* 3. 버튼(Button) */
             div[data-testid="stHorizontalBlock"] button {
-                width: 48px !important;        /* 버튼도 48px로 축소 */
+                width: 48px !important;       
                 min-width: 48px !important;
                 max-width: 48px !important;
                 padding: 2px 0px !important;
@@ -486,11 +485,11 @@ def main():
             background-color: #ffffff; border: 1px solid #eeeeee; color: #333333; border-radius: 4px;
         }
 
-        /* [핵심 수정] 미니 카드 컨테이너의 너비 고정 */
+        /* 미니 카드 컨테이너 */
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
             cursor: pointer; margin-bottom: 5px; 
-            width: 48px !important; /* 부모가 50px이므로 48px로 고정 (width: 100% 삭제) */
+            width: 48px !important; 
             margin: 0 auto 5px auto; 
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
@@ -504,7 +503,7 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V5.8")
+    st.title("🌌 초정밀 만세력 V5.9")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
