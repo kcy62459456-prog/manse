@@ -278,9 +278,9 @@ def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
 # ---------------------------------------------------------
-# 5. UI / CSS 스타일링 (V5.2 - 중앙 정렬 완성)
+# 5. UI / CSS 스타일링 (V5.3 - Zero Gap & Full Width)
 # ---------------------------------------------------------
-st.set_page_config(page_title="초정밀 만세력 V5.2", layout="wide")
+st.set_page_config(page_title="초정밀 만세력 V5.3", layout="wide")
 
 st.markdown("""
 <style>
@@ -288,59 +288,33 @@ st.markdown("""
     * { box-sizing: border-box; }
     html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
     
-    /* 1. 통합 컨테이너 */
+    /* 1. 상단 원국 통합 컨테이너 */
     .total-flex-container {
-        display: flex;
-        flex-direction: row;
-        align-items: flex-start;
-        justify-content: center; 
-        gap: 1px;
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
+        display: flex; flex-direction: row; align-items: flex-start; justify-content: center; 
+        gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px;
         -webkit-overflow-scrolling: touch;
     }
-    
     .pillar-card, .luck-card {
-        background-color: transparent; 
-        padding: 0px;
-        text-align: center; 
+        background-color: transparent; padding: 0px; text-align: center; 
         display: flex; flex-direction: column; align-items: center; 
-        gap: 1px;
-        flex: 0 0 auto;
-        border: none;
-        min-width: 44px;
+        gap: 1px; flex: 0 0 auto; border: none; min-width: 44px;
     }
-    
-    .luck-card {
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-    }
+    .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
 
     .char-box {
-        width: 42px; height: 42px;
-        border-radius: 10px;
+        width: 42px; height: 42px; border-radius: 10px;
         display: flex; justify-content: center; align-items: center;
-        font-family: 'Noto Serif KR', serif; 
-        font-size: 1.6em;
-        font-weight: 900;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-        margin: 0 auto;
+        font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto;
     }
     
     .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
-    .unseong-badge { 
-        font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; 
-        padding: 1px 3px; border-radius: 6px; font-weight: bold;
-        white-space: nowrap;
-    }
+    .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap;}
     .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
     .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
     .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
 
-    /* [PC 확장] */
+    /* [PC 화면 확장] */
     @media only screen and (min-width: 601px) {
         .total-flex-container { gap: 4px; }
         .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
@@ -364,34 +338,52 @@ st.markdown("""
     .badge-12 { background-color: #3949AB; }
     .badge-gong { background-color: #424242; } 
     
-    /* 하단 버튼 스타일 */
-    div[data-testid="stHorizontalBlock"] button {
-        width: auto !important;
-        min-width: 0px !important;
-        padding: 4px 8px !important;
-        margin: 0 auto !important; /* [핵심] 버튼 자체를 중앙 정렬 */
-        height: auto !important;
-        min-height: 0px !important;
-        line-height: 1.2 !important;
-        background-color: #ffffff;
-        border: 1px solid #eeeeee;
-        color: #333333;
-        border-radius: 8px;
-        display: block !important; /* block으로 변경하여 margin auto 적용 */
+    /* [핵심 수정 1] 하단 대운/세운 리스트 (Zero Gap) */
+    /* Streamlit의 가로 컨테이너(Horizontal Block)의 간격 제거 */
+    div[data-testid="stHorizontalBlock"] {
+        gap: 0px !important; /* 기둥 사이 간격 0 */
+        padding: 0px !important;
     }
     
+    /* 각 컬럼(Column)의 패딩/마진 제거 */
+    div[data-testid="column"] {
+        padding: 0px !important;
+        margin: 0px !important;
+        min-width: 0px !important;
+        flex: 1 1 auto !important; /* 유동적 너비 */
+    }
+
+    /* 버튼 스타일 조정 (투명/꽉 채우기) */
+    div[data-testid="stHorizontalBlock"] button {
+        width: 100% !important;        /* 너비 100%로 꽉 채움 */
+        min-width: 0px !important;
+        padding: 4px 0px !important;   /* 좌우 패딩 0 */
+        margin: 0px !important;
+        height: auto !important;
+        line-height: 1.2 !important;
+        background-color: transparent !important; /* 배경 투명 */
+        border: none !important;                  /* 테두리 제거 */
+        color: #333333;
+        border-radius: 0px !important; /* 사각형 */
+        display: block !important;
+    }
+    
+    /* [핵심 수정 2] 하단 미니 카드 스타일 (꽉 채우기) */
     .mini-card-container {
         display: flex; flex-direction: column; align-items: center;
         background: transparent; border: none; padding: 0px; 
-        cursor: pointer; margin-bottom: 5px; 
-        min-width: 30px; 
-        margin: 0 auto 5px auto; /* [핵심] 간지 카드 중앙 정렬 */
+        cursor: pointer; margin-bottom: 0px; /* 하단 여백 제거 */
+        width: 100% !important; /* 꽉 채우기 */
     }
-    .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
+    .dw-active { background-color: #E3F2FD; } /* 선택된 것만 배경색 */
     
     .mini-sipsin { font-size: 0.6em; color: #666; margin-bottom: 1px; white-space: nowrap; }
+    
+    /* 글자 박스 스타일 (타일처럼 보이게) */
     .mini-char {
-        width: 32px; height: 32px; border-radius: 8px;
+        width: 100%; /* 너비 100% -> 옆 타일과 붙음 */
+        height: 34px; 
+        border-radius: 4px; /* 살짝만 둥글게 */
         display: flex; justify-content: center; align-items: center;
         font-family: 'Noto Serif KR', serif; font-size: 1.2em; font-weight: bold;
         margin: 1px 0;
@@ -400,19 +392,15 @@ st.markdown("""
     .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
 
     @media only screen and (max-width: 600px) {
+        /* 모바일에서는 가로 스크롤 허용하되 간격 0 유지 */
         div[data-testid="stHorizontalBlock"] {
             flex-wrap: nowrap !important; overflow-x: auto !important;
-            gap: 4px !important; padding-bottom: 5px;
+            gap: 0px !important; 
         }
-        /* [핵심] 기둥 자체를 Flex 컨테이너로 만들고 내부 요소 중앙 정렬 */
         div[data-testid="column"] {
-            flex: 0 0 auto !important; 
-            width: auto !important; 
-            min-width: 0px !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important; /* 수직 중앙 */
-            justify-content: flex-start !important;
+            flex: 0 0 auto !important; /* 크기 고정 */
+            width: 10% !important; /* 10개니까 대략 10%씩 */
+            min-width: 35px !important; /* 최소 확보 */
         }
     }
 </style>
@@ -473,7 +461,7 @@ def draw_mini_pillar(stem, branch, day_stem, top_label, bottom_label, is_active=
 # ---------------------------------------------------------
 # 6. 메인 앱
 # ---------------------------------------------------------
-st.title("🌌 초정밀 만세력 V5.2")
+st.title("🌌 초정밀 만세력 V5.3")
 
 if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
 if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -650,14 +638,16 @@ if st.session_state.is_calculated:
         if st.session_state.show_daewoon and st.session_state.sel_dw_idx != -1:
             dw = daewoon_visual[st.session_state.sel_dw_idx]
             dynamic_html += generate_pillar_html("대운", dw['s'], dw['b'], s_list, b_list, is_luck=True)
-            dynamic_html += '<div style="width: 15px; flex-shrink: 0;"></div>' 
+            dynamic_html += '<div style="width: 10px;"></div>' 
             
         dynamic_html += generate_pillar_html("시주", h_s, h_b, s_list, b_list)
         dynamic_html += generate_pillar_html("일주", d_s, d_b, s_list, b_list)
         dynamic_html += generate_pillar_html("월주", m_s, m_b, s_list, b_list)
         dynamic_html += generate_pillar_html("연주", y_s, y_b, s_list, b_list)
         
-        final_html = f'<div class="total-flex-container">{dynamic_html}</div>'
+        mode_class = "expanded-mode" if (st.session_state.show_daewoon or st.session_state.show_seun) else "normal-mode"
+        
+        final_html = f'<div class="total-flex-container {mode_class}">{dynamic_html}</div>'
         st.markdown(final_html, unsafe_allow_html=True)
 
         st.divider()
