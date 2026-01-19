@@ -399,7 +399,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V7.0 (Grid Force)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.1 (High Contrast)", layout="wide")
 
     st.markdown("""
     <style>
@@ -412,9 +412,12 @@ def main():
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
         .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
-        .small-text { font-size: 0.7em; color: #333; font-weight: 700; margin-bottom: 1px;}
+        
+        /* [V7.1 수정] 텍스트 고대비 적용 (흰색/밝은회색) */
+        .small-text { font-size: 0.7em; color: #ffffff !important; font-weight: 700; margin-bottom: 1px;}
         .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
-        .jijanggan { font-size: 0.6em; color: #666; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
+        .jijanggan { font-size: 0.6em; color: #dddddd !important; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
+        
         .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
         .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
         
@@ -449,7 +452,7 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* [핵심 수정 V7.0] 모바일 전용: Grid Layout (Vertical Stacking 완전 차단) */
+        /* [핵심 V7.0 유지] 모바일 전용: Grid Layout (Vertical Stacking 완전 차단) */
         @media only screen and (max-width: 600px) {
             
             /* 1. 컨테이너: Grid로 변경 및 가로 흐름 강제 (auto-flow: column) */
@@ -484,7 +487,7 @@ def main():
             }
         }
         
-        /* 미니 카드 컨테이너 */
+        /* 미니 카드 컨테이너 & [V7.1 텍스트 색상 수정] */
         .mini-card-container { 
             display: flex; flex-direction: column; align-items: center; background: transparent; border: none; padding: 0px; 
             cursor: pointer; margin-bottom: 5px; 
@@ -492,17 +495,19 @@ def main():
             margin: 0 auto 5px auto; 
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
-        .mini-sipsin { font-size: 0.55em; color: #666; margin-bottom: 1px; white-space: nowrap; }
+        
+        /* 여기가 핵심 변경 사항: 텍스트를 흰색 계열로 변경 */
+        .mini-sipsin { font-size: 0.55em; color: #e0e0e0 !important; margin-bottom: 1px; white-space: nowrap; }
         .mini-char { 
             width: 28px; height: 28px; border-radius: 6px; display: flex; justify-content: center; align-items: center; 
             font-family: 'Noto Serif KR', serif; font-size: 1.1em; font-weight: bold; margin: 1px 0; 
         }
-        .mini-unseong { font-size: 0.55em; color: #888; margin-top: 1px; }
-        .mini-age { font-size: 0.6em; font-weight: bold; color: #555; margin-top: 2px; }
+        .mini-unseong { font-size: 0.55em; color: #cccccc !important; margin-top: 1px; }
+        .mini-age { font-size: 0.6em; font-weight: bold; color: #ffffff !important; margin-top: 2px; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력 V7.0")
+    st.title("🌌 초정밀 만세력")
 
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
     if 'db' not in st.session_state: st.session_state.db = load_db()
@@ -622,7 +627,7 @@ def main():
             seun_visual = seun_visual[::-1]
 
             st.write("") 
-            st.markdown(f"### 🌺 **{name}**님의 원국 ({basis})")
+            st.markdown(f"### 🌺 **{name}** 님의 원국 ({basis})")
             
             html_parts = []
             
@@ -645,7 +650,7 @@ def main():
             st.divider()
             
             direction_str = "순행" if data['forward'] else "역행"
-            st.subheader("🌊 대운의 흐름 (우측통행 ⬅️)")
+            st.subheader("🌊 대운의 흐름 (⬅️)")
             st.caption(f"대운수: {data['dw_num']:.2f} ({direction_str})")
             
             dw_cols = st.columns(10)
