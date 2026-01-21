@@ -48,6 +48,24 @@ D_STEM_TO_ZI_HOUR_STEM = {
     "丁": "庚", "壬": "庚", "戊": "壬", "癸": "壬",
 }
 
+# [V7.4 추가] 비상용 주요 도시 좌표 사전 (API 실패 대비)
+FALLBACK_CITIES = {
+    "cincinnati": (39.1031, -84.5120),
+    "new york": (40.7128, -74.0060),
+    "los angeles": (34.0522, -118.2437),
+    "london": (51.5074, -0.1278),
+    "paris": (48.8566, 2.3522),
+    "tokyo": (35.6762, 139.6503),
+    "beijing": (39.9042, 116.4074),
+    "seoul": (37.5665, 126.9780),
+    "busan": (35.1796, 129.0756),
+    "incheon": (37.4563, 126.7052),
+    "daegu": (35.8714, 128.6014),
+    "daejeon": (36.3504, 127.3845),
+    "gwangju": (35.1595, 126.8526),
+    "ulsan": (35.5384, 129.3114),
+}
+
 TF = TimezoneFinder()
 DB_FILE = "saju_db.csv"
 
@@ -65,15 +83,19 @@ def load_db():
 def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
-# [V7.3 수정] 지도 검색 기능 강화 (타임아웃 연장 & 헤더 수정)
+# [V7.4 수정] 내부 사전 우선 검색 로직 추가
 @st.cache_data(ttl=3600)
 def geocode_osm_cached(place):
+    # 1. 내부 사전 먼저 확인 (대소문자 무시)
+    clean_place = place.lower().strip()
+    if clean_place in FALLBACK_CITIES:
+        return FALLBACK_CITIES[clean_place]
+
+    # 2. 사전에 없으면 API 호출 시도
     url = "https://nominatim.openstreetmap.org/search"
-    # User-Agent를 좀 더 명확하게 명시하여 차단 방지
-    headers = {"User-Agent": "ManseryeokApp/7.3 (streamlit-app)"}
+    headers = {"User-Agent": "ManseryeokApp/7.4 (streamlit-app)"}
     try:
-        # timeout을 3초에서 10초로 늘림
-        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=10)
+        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=5)
         if r.ok and r.json():
             return float(r.json()[0]['lat']), float(r.json()[0]['lon'])
     except:
@@ -411,7 +433,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V7.3 (Robust Map)", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.4 (Built-in Maps)", layout="wide")
 
     st.markdown("""
     <style>
@@ -419,6 +441,7 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
+        /* 공통 스타일 */
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
