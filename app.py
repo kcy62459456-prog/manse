@@ -65,12 +65,15 @@ def load_db():
 def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
-@st.cache_data(ttl=3600)  # 1시간 캐싱
+# [V7.3 수정] 지도 검색 기능 강화 (타임아웃 연장 & 헤더 수정)
+@st.cache_data(ttl=3600)
 def geocode_osm_cached(place):
     url = "https://nominatim.openstreetmap.org/search"
-    headers = {"User-Agent": "manseryeok-v3-optimized"}
+    # User-Agent를 좀 더 명확하게 명시하여 차단 방지
+    headers = {"User-Agent": "ManseryeokApp/7.3 (streamlit-app)"}
     try:
-        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=3)
+        # timeout을 3초에서 10초로 늘림
+        r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=10)
         if r.ok and r.json():
             return float(r.json()[0]['lat']), float(r.json()[0]['lon'])
     except:
@@ -137,7 +140,6 @@ def calculate_voids(stem, branch):
     }
     return void_map.get(diff, [])
 
-# [V7.2 수정] 12신살 로직 전면 개편 (자리 불문, 조건 충족시 성립)
 def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
     shinsals = []
     y_s, m_s, d_s, h_s = s_list
@@ -146,42 +148,31 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
     if pillar_type == 'branch':
         me = pillar_char
         
-        # 삼합 국(Frame) 정의
         frames = {
-            '수국': ['申', '子', '辰'], # 신자진 -> 화개(진), 역마(인), 도화(유)
-            '화국': ['寅', '午', '戌'], # 인오술 -> 화개(술), 역마(신), 도화(묘)
-            '금국': ['巳', '酉', '丑'], # 사유축 -> 화개(축), 역마(해), 도화(오)
-            '목국': ['亥', '卯', '未']  # 해묘미 -> 화개(미), 역마(사), 도화(자)
+            '수국': ['申', '子', '辰'], 
+            '화국': ['寅', '午', '戌'], 
+            '금국': ['巳', '酉', '丑'], 
+            '목국': ['亥', '卯', '未']  
         }
 
-        # 1. 화개살 (Hwagae) - 삼합의 묘지(마지막 글자)
-        # 내 사주에 삼합의 글자가 하나라도 있고, 운에서 묘지가 오면 화개 성립
+        # 1. 화개살
         if me == '辰' and any(b in frames['수국'] for b in b_list): shinsals.append("화개")
         elif me == '戌' and any(b in frames['화국'] for b in b_list): shinsals.append("화개")
         elif me == '丑' and any(b in frames['금국'] for b in b_list): shinsals.append("화개")
         elif me == '未' and any(b in frames['목국'] for b in b_list): shinsals.append("화개")
 
-        # 2. 역마살 (Yeokma) - 삼합의 생지를 충하는 글자 (첫 글자의 충)
-        # 신자진(수) -> 인(寅)이 역마
-        # 인오술(화) -> 신(申)이 역마
-        # 사유축(금) -> 해(亥)가 역마
-        # 해묘미(목) -> 사(巳)가 역마
+        # 2. 역마살
         if me == '寅' and any(b in frames['수국'] for b in b_list): shinsals.append("역마")
         elif me == '申' and any(b in frames['화국'] for b in b_list): shinsals.append("역마")
         elif me == '亥' and any(b in frames['금국'] for b in b_list): shinsals.append("역마")
         elif me == '巳' and any(b in frames['목국'] for b in b_list): shinsals.append("역마")
 
-        # 3. 도화살 (Dohwa) - 삼합의 왕지를 충하는 건 아니지만, 삼합의 다음 계절 왕지 (연살)
-        # 신자진 -> 유(酉) 도화
-        # 인오술 -> 묘(卯) 도화
-        # 사유축 -> 오(午) 도화
-        # 해묘미 -> 자(子) 도화
+        # 3. 도화살
         if me == '酉' and any(b in frames['수국'] for b in b_list): shinsals.append("도화")
         elif me == '卯' and any(b in frames['화국'] for b in b_list): shinsals.append("도화")
         elif me == '午' and any(b in frames['금국'] for b in b_list): shinsals.append("도화")
         elif me == '子' and any(b in frames['목국'] for b in b_list): shinsals.append("도화")
 
-        # 4. 기타 귀인 (기존 로직 유지)
         chonul_map = {
             "甲": ["丑","未"], "戊": ["丑","未"], "庚": ["丑","未"],
             "乙": ["子","申"], "己": ["子","申"],
@@ -420,7 +411,7 @@ def render_mini_card(stem, branch, day_stem, top_label, bottom_label, is_active=
 # [MODULE 5] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V7.2", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V7.3 (Robust Map)", layout="wide")
 
     st.markdown("""
     <style>
@@ -428,13 +419,11 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* 공통 스타일 */
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
         .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
         
-        /* 고대비 텍스트 */
         .small-text { font-size: 0.7em; color: #ffffff !important; font-weight: 700; margin-bottom: 1px;}
         .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
         .jijanggan { font-size: 0.6em; color: #dddddd !important; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
@@ -442,7 +431,6 @@ def main():
         .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
         .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
         
-        /* PC 스타일 */
         @media only screen and (min-width: 601px) {
             .total-flex-container { gap: 4px; }
             .pillar-card, .luck-card { min-width: 72px; gap: 4px; }
@@ -473,7 +461,6 @@ def main():
         .badge-good { background-color: #D81B60; } .badge-power { background-color: #546E7A; }
         .badge-rel { background-color: #6D4C41; } .badge-12 { background-color: #3949AB; } .badge-gong { background-color: #424242; } 
         
-        /* 모바일 전용: Grid Layout */
         @media only screen and (max-width: 600px) {
             div[data-testid="stHorizontalBlock"] {
                 display: grid !important;
@@ -663,7 +650,7 @@ def main():
             
             direction_str = "순행" if data['forward'] else "역행"
             st.subheader("🌊 대운의 흐름 (⬅️)")
-            st.caption(f"대운수: {data['dw_num']:.2f} ({direction_str})")
+            st.caption(f"대운 수: {data['dw_num']:.2f} ({direction_str})")
             
             dw_cols = st.columns(10)
             for i, dw in enumerate(daewoon_visual):
