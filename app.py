@@ -329,10 +329,12 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
-        /* 🔥 1. 사이드바 너비 확 늘리기 */
-        section[data-testid="stSidebar"] {
-            min-width: 450px !important;
-            max-width: 500px !important;
+        /* 🔥 1. 사이드바 너비 반응형 확장 (PC에서만 넓게, 모바일은 기본값으로!) */
+        @media (min-width: 768px) {
+            section[data-testid="stSidebar"] {
+                min-width: 450px !important;
+                max-width: 500px !important;
+            }
         }
 
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 4px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
