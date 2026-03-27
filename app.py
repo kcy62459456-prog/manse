@@ -7,13 +7,39 @@ from timezonefinder import TimezoneFinder
 import swisseph as swe
 import pandas as pd
 import os
+import json
+
+import firebase_admin
+from firebase_admin import credentials, firestore
+from streamlit_oauth import OAuth2Component
 
 # =============================================================================
-# [MODULE 1] 상수 및 설정 (CONSTANTS)
+# [MODULE 1] 파이어베이스 및 구글 OAuth 설정 (🔥 클라우드 배포용)
+# =============================================================================
+if not firebase_admin._apps:
+    key_dict = json.loads(st.secrets["FIREBASE_KEY"])
+    cred = credentials.Certificate(key_dict)
+    firebase_admin.initialize_app(cred)
+
+db_client = firestore.client()
+
+CLIENT_ID = st.secrets["OAUTH_CLIENT_ID"]
+CLIENT_SECRET = st.secrets["OAUTH_CLIENT_SECRET"]
+AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_URL = "https://oauth2.googleapis.com/token"
+REVOKE_URL = "https://oauth2.googleapis.com/revoke"
+
+# 🔥 진짜 라이브 본점 주소!
+REDIRECT_URI = "https://mansecalendar.streamlit.app/" 
+
+oauth2 = OAuth2Component(CLIENT_ID, CLIENT_SECRET, AUTHORIZE_URL, TOKEN_URL, TOKEN_URL, REVOKE_URL)
+
+# =============================================================================
+# [MODULE 2] 상수 및 설정 (CONSTANTS)
 # =============================================================================
 STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]
 BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
-STEM_ELEMENTS = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]  # 목, 화, 토, 금, 수
+STEM_ELEMENTS = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4]  
 BRANCH_ELEMENTS = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4]
 
 JIJANGGAN = {
@@ -39,46 +65,46 @@ MAJOR_TERMS = [
     ("입동", 225.0, "亥"), ("대설", 255.0, "子"), ("소한", 285.0, "丑"),
 ]
 
-Y_STEM_TO_YIN_MONTH_STEM = {
-    "甲": "丙", "己": "丙", "乙": "戊", "庚": "戊", "丙": "庚", "辛": "庚",
-    "丁": "壬", "壬": "壬", "戊": "甲", "癸": "甲",
-}
-D_STEM_TO_ZI_HOUR_STEM = {
-    "甲": "甲", "己": "甲", "乙": "丙", "庚": "丙", "丙": "戊", "辛": "戊",
-    "丁": "庚", "壬": "庚", "戊": "壬", "癸": "壬",
-}
+Y_STEM_TO_YIN_MONTH_STEM = {"甲": "丙", "己": "丙", "乙": "戊", "庚": "戊", "丙": "庚", "辛": "庚", "丁": "壬", "壬": "壬", "戊": "甲", "癸": "甲"}
+D_STEM_TO_ZI_HOUR_STEM = {"甲": "甲", "己": "甲", "乙": "丙", "庚": "丙", "丙": "戊", "辛": "戊", "丁": "庚", "壬": "庚", "戊": "壬", "癸": "壬"}
 
 FALLBACK_CITIES = {
-    "cincinnati": (39.1031, -84.5120), "new york": (40.7128, -74.0060),
-    "los angeles": (34.0522, -118.2437), "london": (51.5074, -0.1278),
-    "paris": (48.8566, 2.3522), "tokyo": (35.6762, 139.6503),
-    "beijing": (39.9042, 116.4074), "seoul": (37.5665, 126.9780),
-    "busan": (35.1796, 129.0756), "incheon": (37.4563, 126.7052),
-    "daegu": (35.8714, 128.6014), "daejeon": (36.3504, 127.3845),
-    "gwangju": (35.1595, 126.8526), "ulsan": (35.5384, 129.3114),
+    "cincinnati": (39.1031, -84.5120), "seoul": (37.5665, 126.9780),
+    "busan": (35.1796, 129.0756), "gwangju": (35.1595, 126.8526),
 }
-
 TF = TimezoneFinder()
-DB_FILE = "saju_db.csv"
 
 # =============================================================================
-# [MODULE 2] 유틸리티 및 데이터 처리 (UTILS)
+# [MODULE 3] 데이터베이스 처리 (DATABASE - 프라이빗 연동!)
 # =============================================================================
-def load_db():
-    if os.path.exists(DB_FILE):
-        try: return pd.read_csv(DB_FILE)
-        except: pass
-    return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+def load_db(user_email):
+    try:
+        docs = db_client.collection('saju_records').where('user_email', '==', user_email).stream()
+        records = [doc.to_dict() for doc in docs]
+        df = pd.DataFrame(records)
+        if df.empty:
+            return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+        return df
+    except Exception as e:
+        st.error(f"DB 오류: {e}")
+        return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
 
-def save_db(df):
-    df.to_csv(DB_FILE, index=False)
+def save_record(data_dict, user_email):
+    data_dict["생년월일"] = str(data_dict["생년월일"])
+    data_dict["user_email"] = user_email
+    doc_id = f"{user_email}_{data_dict['이름']}"
+    db_client.collection('saju_records').document(doc_id).set(data_dict)
+
+def delete_record(name, user_email):
+    doc_id = f"{user_email}_{name}"
+    db_client.collection('saju_records').document(doc_id).delete()
 
 @st.cache_data(ttl=3600)
 def geocode_osm_cached(place):
     clean_place = place.lower().strip()
     if clean_place in FALLBACK_CITIES: return FALLBACK_CITIES[clean_place]
     url = "https://nominatim.openstreetmap.org/search"
-    headers = {"User-Agent": "ManseryeokApp/7.4 (streamlit-app)"}
+    headers = {"User-Agent": "ManseryeokApp/11.0"}
     try:
         r = requests.get(url, params={"q": place, "format": "json", "limit": 1}, headers=headers, timeout=5)
         if r.ok and r.json(): return float(r.json()[0]['lat']), float(r.json()[0]['lon'])
@@ -94,7 +120,7 @@ def parse_hms(s: str) -> dt.time:
     return dt.time(12, 0)
 
 # =============================================================================
-# [MODULE 3] 사주 핵심 로직 (CORE LOGIC)
+# [MODULE 4] 사주 핵심 로직 (CORE LOGIC)
 # =============================================================================
 def get_element_idx(char: str) -> int:
     if char in STEMS: return STEM_ELEMENTS[STEMS.index(char)]
@@ -112,22 +138,17 @@ def get_sipsin(day_stem: str, target: str) -> str:
     relation = (t_elem - d_elem) % 5
     d_pol = get_polarity(day_stem)
     t_pol = get_polarity(target)
-    
     if target == "子": t_pol = 0
     elif target in ["亥", "午"]: t_pol = 1
     elif target == "巳": t_pol = 0
-    
     is_diff = 1 if d_pol != t_pol else 0
     return SIPSIN_NAMES[relation][is_diff]
 
 def get_12unseong(stem: str, branch: str) -> str:
-    start_map = {
-        "甲": ("亥", 1), "丙": ("寅", 1), "戊": ("寅", 1), "庚": ("巳", 1), "壬": ("申", 1),
-        "乙": ("午", -1), "丁": ("酉", -1), "己": ("酉", -1), "辛": ("子", -1), "癸": ("卯", -1)
-    }
+    start_map = {"甲": ("亥", 1), "丙": ("寅", 1), "戊": ("寅", 1), "庚": ("巳", 1), "壬": ("申", 1),
+                 "乙": ("午", -1), "丁": ("酉", -1), "己": ("酉", -1), "辛": ("子", -1), "癸": ("卯", -1)}
     start_branch, direction = start_map[stem]
-    start_idx = BRANCHES.index(start_branch)
-    target_idx = BRANCHES.index(branch)
+    start_idx, target_idx = BRANCHES.index(start_branch), BRANCHES.index(branch)
     diff = (target_idx - start_idx) % 12 if direction == 1 else (start_idx - target_idx) % 12
     return UNSEONG_ORDER[(3 + diff) % 12]
 
@@ -151,9 +172,7 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
         chonul_map = {"甲": ["丑","未"], "戊": ["丑","未"], "庚": ["丑","未"], "乙": ["子","申"], "己": ["子","申"], "丙": ["亥","酉"], "丁": ["亥","酉"], "辛": ["寅","午"], "壬": ["巳","卯"], "癸": ["巳","卯"]}
         if me in chonul_map.get(d_s, []): shinsals.append("천을귀인")
         
-        munchang_map = {"甲":"巳", "乙":"午", "丙":"申", "丁":"酉", "戊":"申", "己":"酉", "庚":"亥", "辛":"子", "壬":"寅", "癸":"卯"}
-        if me == munchang_map.get(d_s): shinsals.append("문창귀인")
-        
+        if me == {"甲":"巳", "乙":"午", "丙":"申", "丁":"酉", "戊":"申", "己":"酉", "庚":"亥", "辛":"子", "壬":"寅", "癸":"卯"}.get(d_s): shinsals.append("문창귀인")
         if me == BRANCHES[(BRANCHES.index(m_b) - 1) % 12]: shinsals.append("천의성")
         if me == {"甲":"卯", "丙":"午", "戊":"午", "庚":"酉", "壬":"子"}.get(d_s): shinsals.append("양인")
         if me == {"子":"未", "丑":"午", "寅":"酉", "卯":"申", "辰":"亥", "巳":"戌", "午":"丑", "未":"子", "申":"卯", "酉":"寅", "戌":"巳", "亥":"辰"}.get(d_b): shinsals.append("원진")
@@ -215,7 +234,7 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     birth_utc_for_year = utc_from_jd_ut(jd_ut)
     y_year = birth_utc_for_year.year
     jd_start = swe.julday(y_year, 1, 1, 0.0, swe.GREG_CAL)
-    lichun = swe.solcross_ut(315.0, jd_start, swe.FLG_MOSEPH) # FLG_MOSEPH 사용 (안전)
+    lichun = swe.solcross_ut(315.0, jd_start, swe.FLG_MOSEPH) 
     if jd_ut < lichun: y_year -= 1
     y_idx = (y_year - 1984) % 60 
     y_s, y_b = STEMS[y_idx % 10], BRANCHES[y_idx % 12]
@@ -262,7 +281,6 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     
     dw_num = diff_days / 3.0
 
-    # 🔥 0세 대운(월주) 강제 삽입 로직
     daewoon_list = [{'s': m_s, 'b': m_b, 'age': 0.0}]
     ms_idx, mb_idx = STEMS.index(m_s), BRANCHES.index(m_b)
     
@@ -279,7 +297,7 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     }
 
 # =============================================================================
-# [MODULE 4] UI 렌더링 (VIEW)
+# [MODULE 5] UI 렌더링 (VIEW)
 # =============================================================================
 def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     day_stem = s_list[2] 
@@ -300,7 +318,6 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
                         get_shinsal_list(branch, 'branch', col_idx, s_list, b_list) + 
                         get_ganji_shinsal(stem, branch)))
     
-    # 🔥 신살 배경색 무채색(투명도)으로 통일
     badges_html = "".join([f'<span class="badge">{s}</span>' for s in shinsals])
     card_cls = "luck-card" if is_luck else "pillar-card"
     
@@ -314,100 +331,73 @@ def render_mini_card(stem, branch, day_stem, bottom_label, is_active=False):
     unseong = get_12unseong(day_stem, branch)
     active_cls = "dw-active" if is_active else ""
     
-    # 🔥 대세운 밑에도 십이운성 추가!
     return f'<div class="mini-card-container {active_cls}"><div class="mini-sipsin">{s_sipsin}</div><div class="mini-char bg-{s_idx}">{stem}</div><div class="mini-char bg-{b_idx}">{branch}</div><div class="mini-sipsin">{b_sipsin}</div><div class="mini-unseong">{unseong}</div><div class="mini-age">{bottom_label}</div></div>'
 
 # =============================================================================
-# [MODULE 5] 메인 애플리케이션 (MAIN APP)
+# [MODULE 6] 메인 애플리케이션 (MAIN APP)
 # =============================================================================
 def main():
-    st.set_page_config(page_title="초정밀 만세력 V8.0", layout="wide")
+    st.set_page_config(page_title="초정밀 만세력 V11 (라이브 배포)", layout="wide")
 
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=Noto+Serif+KR:wght@400;700;900&display=swap');
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
-        
-        /* 🔥 1. 사이드바 너비 반응형 확장 (PC에서만 넓게, 모바일은 기본값으로!) */
-        @media (min-width: 768px) {
-            section[data-testid="stSidebar"] {
-                min-width: 450px !important;
-                max-width: 500px !important;
-            }
-        }
-
+        @media (min-width: 768px) { section[data-testid="stSidebar"] { min-width: 450px !important; max-width: 500px !important; } }
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 4px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 0 0 auto; border: none; min-width: 60px; }
-        
-        /* 🔥 2. 한자 크기 대폭 키우고 강제 폰트 통일 */
-        .char-box { 
-            width: 64px; height: 64px; border-radius: 8px; display: flex; justify-content: center; align-items: center; 
-            font-family: 'Noto Serif KR', serif !important; 
-            font-size: 2.3em !important; 
-            font-weight: 900 !important; 
-            margin: 0 auto; 
-            /* 테두리(border) 완전 삭제, 가벼운 그림자만 */
-            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-        }
-        
-        /* 🔥 3. 라이트 모드 글씨 증발 해결 (color: inherit 사용) */
+        .char-box { width: 64px; height: 64px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif !important; font-size: 2.3em !important; font-weight: 900 !important; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .small-text { font-size: 0.9em; color: var(--text-color) !important; font-weight: 700; margin-bottom: 2px;}
         .unseong-badge { font-size: 0.75em; color: var(--text-color); background-color: rgba(128, 128, 128, 0.15); padding: 2px 6px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
         .jijanggan { font-size: 0.75em; color: var(--text-color) !important; opacity: 0.7; letter-spacing: 0px; margin-top: 2px; margin-bottom: 2px;}
-        
-        /* 🔥 4. 신살 1줄 정렬 & 볼드/원색 해제 */
         .shinsal-container { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 6px; width: 100%; }
-        .badge { 
-            font-size: 0.65em; padding: 3px 6px; border-radius: 3px; 
-            font-weight: normal; /* 볼드 해제 */
-            color: var(--text-color); 
-            background-color: rgba(128, 128, 128, 0.2); /* 무채색 반투명으로 톤다운 */
-            display: inline-block; width: max-content; 
-        }
-        
-        /* 오행별 색상 (금 오행을 완전 흰색으로 변경, 테두리 없음) */
-        .bg-0 { background-color: #C8E6C9; color: #004D40; } 
-        .bg-1 { background-color: #FFCDD2; color: #B71C1C; } 
-        .bg-2 { background-color: #FFF9C4; color: #E65100; } 
-        .bg-3 { background-color: #FFFFFF; color: #212121; } /* 금 오행 흰색 */
-        .bg-4 { background-color: #212121; color: #FFFFFF; } 
-        
-        /* 🔥 5. 대/세운 거대한 회색 버튼 박스 박살내기 */
-        div[data-testid="stHorizontalBlock"] button {
-            background-color: transparent !important; 
-            border: none !important; 
-            box-shadow: none !important;
-            color: var(--text-color) !important;
-            padding: 0 !important;
-            margin: 0 auto !important;
-            height: auto !important;
-        }
-        div[data-testid="stHorizontalBlock"] button:hover {
-            color: #FF4B4B !important; /* 마우스 올렸을 때만 빨간색 포인트 */
-        }
-        
-        /* 미니 카드 (버튼 껍데기가 사라진 공간만큼 넓게) */
+        .badge { font-size: 0.65em; padding: 3px 6px; border-radius: 3px; font-weight: normal; color: var(--text-color); background-color: rgba(128, 128, 128, 0.2); display: inline-block; width: max-content; }
+        .bg-0 { background-color: #C8E6C9; color: #004D40; } .bg-1 { background-color: #FFCDD2; color: #B71C1C; } .bg-2 { background-color: #FFF9C4; color: #E65100; } .bg-3 { background-color: #FFFFFF; color: #212121; } .bg-4 { background-color: #212121; color: #FFFFFF; } 
+        div[data-testid="stHorizontalBlock"] button { background-color: transparent !important; border: none !important; box-shadow: none !important; color: var(--text-color) !important; padding: 0 !important; margin: 0 auto !important; height: auto !important; }
+        div[data-testid="stHorizontalBlock"] button:hover { color: #FF4B4B !important; }
         .mini-card-container { display: flex; flex-direction: column; align-items: center; background: transparent; padding: 4px; cursor: pointer; width: 55px !important; margin: 0 auto; }
         .dw-active { background-color: rgba(100, 150, 255, 0.15); border-radius: 8px; }
         .mini-sipsin { font-size: 0.7em; color: var(--text-color) !important; opacity: 0.8; margin-bottom: 2px; white-space: nowrap; }
-        .mini-char { 
-            width: 36px; height: 36px; border-radius: 6px; display: flex; justify-content: center; align-items: center; 
-            font-family: 'Noto Serif KR', serif !important; 
-            font-size: 1.5em !important; /* 미니 한자도 대폭 키움 */
-            font-weight: 900 !important; 
-            margin: 2px 0; 
-            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-        }
+        .mini-char { width: 36px; height: 36px; border-radius: 6px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif !important; font-size: 1.5em !important; font-weight: 900 !important; margin: 2px 0; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
         .mini-unseong { font-size: 0.65em; color: var(--text-color) !important; opacity: 0.7; margin-top: 2px; }
         .mini-age { font-size: 0.8em; font-weight: bold; color: var(--text-color) !important; margin-top: 4px; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.title("🌌 초정밀 만세력")
+    if "token" not in st.session_state:
+        with st.sidebar:
+            st.title("🔐 프라이빗 만세력")
+            st.write("나만의 명식을 보관하려면 먼저 로그인해 줘!")
+            result = oauth2.authorize_button(
+                name="Google로 로그인",
+                icon="https://www.google.com/favicon.ico",
+                redirect_uri=REDIRECT_URI,
+                scope="openid email profile"
+            )
+            if result and 'token' in result:
+                st.session_state.token = result.get('token')
+                st.rerun()
+        
+        st.info("👈 왼쪽 사이드바에서 구글 계정으로 로그인해 주세요!")
+        return 
 
+    if "user_email" not in st.session_state:
+        token = st.session_state["token"]["access_token"]
+        user_info = requests.get("https://www.googleapis.com/oauth2/v1/userinfo", headers={"Authorization": f"Bearer {token}"}).json()
+        st.session_state.user_email = user_info.get("email")
+        st.session_state.user_name = user_info.get("name", "동지")
+        st.rerun()
+
+    user_email = st.session_state.user_email
+    
+    st.title("🌌 초정밀 만세력")
+    
     if 'is_calculated' not in st.session_state: st.session_state.is_calculated = False
-    if 'db' not in st.session_state: st.session_state.db = load_db()
+    
+    if 'db' not in st.session_state: 
+        st.session_state.db = load_db(user_email)
+        
     if 'show_daewoon' not in st.session_state: st.session_state.show_daewoon = False
     if 'show_seun' not in st.session_state: st.session_state.show_seun = False
     if 'sel_dw_idx' not in st.session_state: st.session_state.sel_dw_idx = -1
@@ -420,7 +410,14 @@ def main():
         st.session_state.sel_seun_year = -1
 
     with st.sidebar:
-        st.header("🗂️ 명식 보관함")
+        st.success(f"환영해, {st.session_state.user_name} 동지! (로그인됨)")
+        if st.button("로그아웃"):
+            for key in ['token', 'user_email', 'user_name', 'db']:
+                if key in st.session_state: del st.session_state[key]
+            st.rerun()
+            
+        st.divider()
+        st.header(f"🗂️ 내 전용 명식 보관함")
         saved_list = st.session_state.db['이름'].tolist()
         selected_profile = st.selectbox("불러오기", ["(선택 안함)"] + saved_list)
         
@@ -464,22 +461,15 @@ def main():
             
         if c2.button("💾 저장"):
             new_row = {"이름": name, "성별": gender, "생년월일": birth_date, "시간": time_str, "시각기준": basis, "도시": place, "위도": lat, "경도": lon}
-            df = st.session_state.db
-            if name in df['이름'].values:
-                df.loc[df['이름'] == name, :] = list(new_row.values())
-                st.toast(f"수정됨: {name}")
-            else:
-                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-                st.toast(f"저장됨: {name}")
-            st.session_state.db = df
-            save_db(df)
+            save_record(new_row, user_email)
+            st.session_state.db = load_db(user_email)
+            st.toast(f"내 금고에 안전하게 저장됨: {name}")
             st.rerun()
 
         if selected_profile != "(선택 안함)" and st.button("🗑️ 삭제"):
-            df = st.session_state.db[st.session_state.db['이름'] != selected_profile]
-            st.session_state.db = df
-            save_db(df)
-            st.toast("삭제됨")
+            delete_record(selected_profile, user_email)
+            st.session_state.db = load_db(user_email)
+            st.toast("내 금고에서 삭제됨")
             st.rerun()
 
     if st.session_state.is_calculated:
@@ -489,7 +479,7 @@ def main():
             daewoon_visual = daewoon_list[::-1]
             
             if st.session_state.sel_dw_idx == -1: 
-                st.session_state.sel_dw_idx = 10 # 대운이 11개(0세 포함)이므로 끝 인덱스는 10
+                st.session_state.sel_dw_idx = 10 
             
             sel_dw = daewoon_visual[st.session_state.sel_dw_idx]
             
@@ -524,10 +514,9 @@ def main():
             st.subheader("🌊 대운의 흐름 (⬅️)")
             st.caption(f"대운 수: {data['dw_num']:.1f} ({'순행' if data['forward'] else '역행'})")
             
-            dw_cols = st.columns(11) # 0세 대운 포함 11칸
+            dw_cols = st.columns(11) 
             for i, dw in enumerate(daewoon_visual):
                 with dw_cols[i]:
-                    # 🔥 소수점 첫째자리까지 라벨 버튼화
                     if st.button(f"{dw['age']:.1f}", key=f"dw_btn_{i}", use_container_width=True):
                         st.session_state.sel_dw_idx = i
                         st.session_state.show_daewoon = True
