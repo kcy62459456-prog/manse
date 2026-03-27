@@ -48,7 +48,7 @@ D_STEM_TO_ZI_HOUR_STEM = {
     "丁": "庚", "壬": "庚", "戊": "壬", "癸": "壬",
 }
 
-# [V7.4 추가] 비상용 주요 도시 좌표 사전 (API 실패 대비)
+# 비상용 주요 도시 좌표 사전 (API 실패 대비)
 FALLBACK_CITIES = {
     "cincinnati": (39.1031, -84.5120),
     "new york": (40.7128, -74.0060),
@@ -83,15 +83,12 @@ def load_db():
 def save_db(df):
     df.to_csv(DB_FILE, index=False)
 
-# [V7.4 수정] 내부 사전 우선 검색 로직 추가
 @st.cache_data(ttl=3600)
 def geocode_osm_cached(place):
-    # 1. 내부 사전 먼저 확인 (대소문자 무시)
     clean_place = place.lower().strip()
     if clean_place in FALLBACK_CITIES:
         return FALLBACK_CITIES[clean_place]
 
-    # 2. 사전에 없으면 API 호출 시도
     url = "https://nominatim.openstreetmap.org/search"
     headers = {"User-Agent": "ManseryeokApp/7.4 (streamlit-app)"}
     try:
@@ -177,19 +174,16 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
             '목국': ['亥', '卯', '未']  
         }
 
-        # 1. 화개살
         if me == '辰' and any(b in frames['수국'] for b in b_list): shinsals.append("화개")
         elif me == '戌' and any(b in frames['화국'] for b in b_list): shinsals.append("화개")
         elif me == '丑' and any(b in frames['금국'] for b in b_list): shinsals.append("화개")
         elif me == '未' and any(b in frames['목국'] for b in b_list): shinsals.append("화개")
 
-        # 2. 역마살
         if me == '寅' and any(b in frames['수국'] for b in b_list): shinsals.append("역마")
         elif me == '申' and any(b in frames['화국'] for b in b_list): shinsals.append("역마")
         elif me == '亥' and any(b in frames['금국'] for b in b_list): shinsals.append("역마")
         elif me == '巳' and any(b in frames['목국'] for b in b_list): shinsals.append("역마")
 
-        # 3. 도화살
         if me == '酉' and any(b in frames['수국'] for b in b_list): shinsals.append("도화")
         elif me == '卯' and any(b in frames['화국'] for b in b_list): shinsals.append("도화")
         elif me == '午' and any(b in frames['금국'] for b in b_list): shinsals.append("도화")
@@ -441,18 +435,45 @@ def main():
         * { box-sizing: border-box; }
         html, body, [class*="css"] { font-family: 'Noto Sans KR', sans-serif; }
         
+        /* 🔥 1. 사이드바 너비 1.5배 확장 (답답했던 왼쪽 날개 해방!) */
+        [data-testid="stSidebar"] {
+            min-width: 450px !important;
+            max-width: 500px !important;
+        }
+        
         /* 공통 스타일 */
         .total-flex-container { display: flex; flex-direction: row; align-items: flex-start; justify-content: center; gap: 1px; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1px; flex: 0 0 auto; border: none; min-width: 44px; }
         .luck-card { background-color: transparent !important; border: none !important; box-shadow: none !important; }
-        .char-box { width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif; font-size: 1.6em; font-weight: 900; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; }
+        
+        /* 🔥 2. 한자 폰트 강제 볼드 & 땜빵 방지 (단단하고 묵직하게!) */
+        .char-box { 
+            width: 42px; height: 42px; border-radius: 10px; display: flex; justify-content: center; align-items: center; 
+            font-family: 'Noto Serif KR', 'Batang', 'Malgun Gothic', serif !important; 
+            font-size: 1.6em; 
+            font-weight: 900 !important; 
+            -webkit-text-stroke: 0.5px currentColor; /* 강제로 글씨를 두껍게 해킹 */
+            text-shadow: 0 0 1px currentColor; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 0 auto; 
+        }
         
         .small-text { font-size: 0.7em; color: #ffffff !important; font-weight: 700; margin-bottom: 1px;}
         .unseong-badge { font-size: 0.6em; color: #2c3e50; background-color: #f1f3f5; padding: 1px 3px; border-radius: 6px; font-weight: bold; white-space: nowrap; }
         .jijanggan { font-size: 0.6em; color: #dddddd !important; letter-spacing: -1px; margin-top: -1px; margin-bottom: 1px;}
         
-        .shinsal-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 1px; margin-top: 1px; max-width: 42px; }
-        .badge { font-size: 0.5em; padding: 1px 2px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; }
+        /* 🔥 3. 신살 뱃지 1줄 1개 세로 정렬 (퍼지지 않게 군기 잡기!) */
+        .shinsal-container { 
+            display: flex; 
+            flex-direction: column; /* 세로로만 쌓이게 변경 */
+            align-items: center; 
+            gap: 2px; 
+            margin-top: 4px; 
+            width: 100%; 
+        }
+        .badge { 
+            font-size: 0.5em; padding: 2px 4px; border-radius: 3px; font-weight: 600; color: white; opacity: 0.95; 
+            display: inline-block; width: max-content; /* 글자 길이에 딱 맞게 뱃지 크기 고정 */
+        }
         
         @media only screen and (min-width: 601px) {
             .total-flex-container { gap: 4px; }
@@ -461,8 +482,10 @@ def main():
             .small-text { font-size: 0.9em; }
             .unseong-badge { font-size: 0.8em; padding: 2px 6px; }
             .jijanggan { font-size: 0.75em; letter-spacing: 1px; }
-            .shinsal-container { gap: 2px; margin-top: 4px; max-width: 70px; }
-            .badge { font-size: 0.65em; padding: 2px 5px; }
+            
+            /* 넓은 화면에서도 신살은 무조건 세로 1줄! */
+            .shinsal-container { gap: 3px; margin-top: 6px; width: 100%; }
+            .badge { font-size: 0.65em; padding: 3px 6px; }
             
             div[data-testid="stHorizontalBlock"] button {
                 width: 100% !important; 
@@ -495,14 +518,14 @@ def main():
                 padding-bottom: 5px;
             }
             div[data-testid="column"] {
-                width: 50px !important;           
+                width: 50px !important;            
                 min-width: 50px !important;
                 max-width: 50px !important;
                 padding: 0 !important;
                 margin: 0 !important;
             }
             div[data-testid="stHorizontalBlock"] button {
-                width: 48px !important;       
+                width: 48px !important;        
                 min-width: 48px !important;
                 max-width: 48px !important;
                 padding: 2px 0px !important;
@@ -520,9 +543,15 @@ def main():
         }
         .dw-active { background-color: #E3F2FD; border-radius: 8px; padding: 2px; }
         .mini-sipsin { font-size: 0.55em; color: #e0e0e0 !important; margin-bottom: 1px; white-space: nowrap; }
+        
+        /* 🔥 미니 카드 한자도 강제 볼드 해킹 똑같이 적용 */
         .mini-char { 
             width: 28px; height: 28px; border-radius: 6px; display: flex; justify-content: center; align-items: center; 
-            font-family: 'Noto Serif KR', serif; font-size: 1.1em; font-weight: bold; margin: 1px 0; 
+            font-family: 'Noto Serif KR', 'Batang', 'Malgun Gothic', serif !important; 
+            font-size: 1.1em; 
+            font-weight: 900 !important; 
+            -webkit-text-stroke: 0.3px currentColor; /* 글씨가 작으니 stroke는 얇게 */
+            margin: 1px 0; 
         }
         .mini-unseong { font-size: 0.55em; color: #cccccc !important; margin-top: 1px; }
         .mini-age { font-size: 0.6em; font-weight: bold; color: #ffffff !important; margin-top: 2px; }
