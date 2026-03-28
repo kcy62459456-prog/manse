@@ -83,11 +83,11 @@ def load_db(user_email):
         records = [doc.to_dict() for doc in docs]
         df = pd.DataFrame(records)
         if df.empty:
-            return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+            return pd.DataFrame(columns=["이름", "성별", "생년월일", "생시", "시각 기준", "도시", "위도", "경도"])
         return df
     except Exception as e:
         st.error(f"DB 오류: {e}")
-        return pd.DataFrame(columns=["이름", "성별", "생년월일", "시간", "시각기준", "도시", "위도", "경도"])
+        return pd.DataFrame(columns=["이름", "성별", "생년월일", "생시", "시각기준", "도시", "위도", "경도"])
 
 def save_record(data_dict, user_email):
     data_dict["생년월일"] = str(data_dict["생년월일"])
@@ -428,7 +428,7 @@ def main():
             row = st.session_state.db[st.session_state.db['이름'] == selected_profile].iloc[0]
             def_name, def_gender = row['이름'], row['성별']
             def_date = dt.datetime.strptime(str(row['생년월일']), "%Y-%m-%d").date()
-            def_time, def_basis, def_place = row['시간'], row['시각기준'], row['도시']
+            def_time, def_basis, def_place = row['생시'], row['시각기준'], row['도시']
             def_lat, def_lon = float(row['위도']), float(row['경도'])
 
         st.divider()
@@ -436,7 +436,7 @@ def main():
         name = st.text_input("이름", def_name)
         gender = st.radio("성별", ["남", "여"], index=0 if def_gender=="남" else 1, horizontal=True)
         birth_date = st.date_input("생년월일", def_date, min_value=dt.date(1, 1, 1), max_value=dt.date(2100, 12, 31))
-        time_str = st.text_input("시간", def_time)
+        time_str = st.text_input("생시", def_time)
         basis = st.radio("기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0 if "표준" in def_basis else 1)
         
         st.caption("장소")
@@ -460,7 +460,7 @@ def main():
             st.rerun()
             
         if c2.button("💾 저장"):
-            new_row = {"이름": name, "성별": gender, "생년월일": birth_date, "시간": time_str, "시각기준": basis, "도시": place, "위도": lat, "경도": lon}
+            new_row = {"이름": name, "성별": gender, "생년월일": birth_date, "생시": time_str, "시각기준": basis, "도시": place, "위도": lat, "경도": lon}
             save_record(new_row, user_email)
             st.session_state.db = load_db(user_email)
             st.toast(f"내 금고에 안전하게 저장됨: {name}")
