@@ -163,11 +163,16 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
     y_b, m_b, d_b, h_b = b_list
     me = pillar_char
     
-    if pillar_type == 'branch':
+if pillar_type == 'branch':
         frames = {'수국': ['申', '子', '辰'], '화국': ['寅', '午', '戌'], '금국': ['巳', '酉', '丑'], '목국': ['亥', '卯', '未']}
-        if (me=='辰' and any(b in frames['수국'] for b in b_list)) or (me=='戌' and any(b in frames['화국'] for b in b_list)) or (me=='丑' and any(b in frames['금국'] for b in b_list)) or (me=='未' and any(b in frames['목국'] for b in b_list)): shinsals.append("화개")
-        if (me=='寅' and any(b in frames['수국'] for b in b_list)) or (me=='申' and any(b in frames['화국'] for b in b_list)) or (me=='亥' and any(b in frames['금국'] for b in b_list)) or (me=='巳' and any(b in frames['목국'] for b in b_list)): shinsals.append("역마")
-        if (me=='酉' and any(b in frames['수국'] for b in b_list)) or (me=='卯' and any(b in frames['화국'] for b in b_list)) or (me=='午' and any(b in frames['금국'] for b in b_list)) or (me=='子' and any(b in frames['목국'] for b in b_list)): shinsals.append("도화")
+        
+        # 핵심: 나 자신(현재 기둥)을 제외한 나머지 지지들만 모은 리스트 생성
+        other_b = [b for i, b in enumerate(b_list) if i != col_idx]
+
+        # b_list 대신 other_b를 검사하도록 수정
+        if (me=='辰' and any(b in frames['수국'] for b in other_b)) or (me=='戌' and any(b in frames['화국'] for b in other_b)) or (me=='丑' and any(b in frames['금국'] for b in other_b)) or (me=='未' and any(b in frames['목국'] for b in other_b)): shinsals.append("화개")
+        if (me=='寅' and any(b in frames['수국'] for b in other_b)) or (me=='申' and any(b in frames['화국'] for b in other_b)) or (me=='亥' and any(b in frames['금국'] for b in other_b)) or (me=='巳' and any(b in frames['목국'] for b in other_b)): shinsals.append("역마")
+        if (me=='酉' and any(b in frames['수국'] for b in other_b)) or (me=='卯' and any(b in frames['화국'] for b in other_b)) or (me=='午' and any(b in frames['금국'] for b in other_b)) or (me=='子' and any(b in frames['목국'] for b in other_b)): shinsals.append("도화")
 
         chonul_map = {"甲": ["丑","未"], "戊": ["丑","未"], "庚": ["丑","未"], "乙": ["子","申"], "己": ["子","申"], "丙": ["亥","酉"], "丁": ["亥","酉"], "辛": ["寅","午"], "壬": ["巳","卯"], "癸": ["巳","卯"]}
         if me in chonul_map.get(d_s, []): shinsals.append("천을귀인")
