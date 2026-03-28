@@ -182,8 +182,8 @@ def get_shinsal_list(pillar_char, pillar_type, col_idx, s_list, b_list):
         if me == {"子":"未", "丑":"午", "寅":"酉", "卯":"申", "辰":"亥", "巳":"戌", "午":"丑", "未":"子", "申":"卯", "酉":"寅", "戌":"巳", "亥":"辰"}.get(d_b): shinsals.append("원진")
         if me == {"子":"酉", "丑":"午", "寅":"未", "卯":"申", "辰":"亥", "巳":"戌", "午":"丑", "未":"寅", "申":"卯", "酉":"子", "戌":"巳", "亥":"辰"}.get(d_b): shinsals.append("귀문")
         
-        if me in calculate_voids(y_s, y_b) if col_idx == 2 else calculate_voids(d_s, d_b): shinsals.append("공망")
-
+        if me in (calculate_voids(y_s, y_b) if col_idx == 2 else calculate_voids(d_s, d_b)): shinsals.append("공망")
+            
     elif pillar_type == 'stem':
         s_set = set(s_list)
         if {"甲","戊","庚"}.issubset(s_set) or {"辛","壬","癸"}.issubset(s_set) or {"乙","丙","丁"}.issubset(s_set): shinsals.append("삼기")
