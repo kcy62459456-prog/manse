@@ -321,7 +321,7 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     badges_html = "".join([f'<span class="badge">{s}</span>' for s in shinsals])
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-    return f'<div class="{card_cls}"><div class="small-text">{title}</div><div class="small-text">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="small-text">{b_sipsin}</div><div class="unseong-badge">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>'
+return f'<div class="{card_cls}"><div class="small-text">{title}</div><div class="sipsin-badge">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="sipsin-badge">{b_sipsin}</div><div class="unseong-text">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>'
 
 def render_mini_card(stem, branch, day_stem, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
@@ -349,7 +349,8 @@ def main():
         .pillar-card, .luck-card { background-color: transparent; padding: 0px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 0 0 auto; border: none; min-width: 60px; }
         .char-box { width: 64px; height: 64px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-family: 'Noto Serif KR', serif !important; font-size: 2.3em !important; font-weight: 900 !important; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
         .small-text { font-size: 0.9em; color: var(--text-color) !important; font-weight: 700; margin-bottom: 2px;}
-        .unseong-badge { font-size: 0.75em; color: var(--text-color); background-color: rgba(128, 128, 128, 0.15); padding: 2px 6px; border-radius: 4px; font-weight: bold; white-space: nowrap; }
+        .sipsin-badge { font-size: 0.75em; color: var(--text-color); background-color: rgba(128, 128, 128, 0.15); padding: 2px 6px; border-radius: 4px; font-weight: bold; white-space: nowrap; margin-bottom: 2px; margin-top: 2px; }
+        .unseong-text { font-size: 0.9em; color: var(--text-color) !important; font-weight: 700; margin-top: 2px; margin-bottom: 2px; }
         .jijanggan { font-size: 0.75em; color: var(--text-color) !important; opacity: 0.7; letter-spacing: 0px; margin-top: 2px; margin-bottom: 2px;}
         .shinsal-container { display: flex; flex-direction: column; align-items: center; gap: 3px; margin-top: 6px; width: 100%; }
         .badge { font-size: 0.65em; padding: 3px 6px; border-radius: 3px; font-weight: normal; color: var(--text-color); background-color: rgba(128, 128, 128, 0.2); display: inline-block; width: max-content; }
