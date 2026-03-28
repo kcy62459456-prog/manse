@@ -321,7 +321,7 @@ def render_pillar_html(title, stem, branch, s_list, b_list, is_luck=False):
     badges_html = "".join([f'<span class="badge">{s}</span>' for s in shinsals])
     card_cls = "luck-card" if is_luck else "pillar-card"
     
-return f'<div class="{card_cls}"><div class="small-text">{title}</div><div class="sipsin-badge">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="sipsin-badge">{b_sipsin}</div><div class="unseong-text">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>'
+    return f'<div class="{card_cls}"><div class="small-text">{title}</div><div class="sipsin-badge">{s_sipsin}</div><div class="char-box bg-{s_idx}">{stem}</div><div class="char-box bg-{b_idx}">{branch}</div>{hiddens_html}<div class="sipsin-badge">{b_sipsin}</div><div class="unseong-text">{unseong}</div><div class="shinsal-container">{badges_html}</div></div>'
 
 def render_mini_card(stem, branch, day_stem, bottom_label, is_active=False):
     s_idx = get_element_idx(stem)
