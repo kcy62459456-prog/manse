@@ -1,4 +1,5 @@
 import math
+import calendar
 import datetime as dt
 from zoneinfo import ZoneInfo
 import requests
@@ -440,7 +441,54 @@ def main():
         st.header("📝 정보 입력")
         name = st.text_input("이름", def_name)
         gender = st.radio("성별", ["남", "여"], index=0 if def_gender=="남" else 1, horizontal=True)
-        birth_date = st.date_input("생년월일", def_date, min_value=dt.date(1, 1, 1), max_value=dt.date(2100, 12, 31))
+        # Streamlit의 달력 위젯은 버전/브라우저에 따라 아주 오래된 날짜 입력이
+        # 불안정할 수 있어, 생년월일은 년·월·일 숫자로 각각 입력받습니다.
+        # 프로필별 키를 사용하면 저장된 명식을 바꿔 불러올 때 이전 날짜가
+        # 그대로 남는 세션 상태 문제도 피할 수 있습니다.
+        st.markdown("**생년월일**")
+        profile_key = selected_profile
+        year_key = f"birth_year::{profile_key}"
+        month_key = f"birth_month::{profile_key}"
+        day_key = f"birth_day::{profile_key}"
+
+        if year_key not in st.session_state:
+            st.session_state[year_key] = int(def_date.year)
+        if month_key not in st.session_state:
+            st.session_state[month_key] = int(def_date.month)
+        if day_key not in st.session_state:
+            st.session_state[day_key] = int(def_date.day)
+
+        date_c1, date_c2, date_c3 = st.columns([1.4, 1, 1])
+        birth_year = int(date_c1.number_input(
+            "년",
+            min_value=1800,
+            max_value=dt.date.today().year,
+            step=1,
+            key=year_key,
+        ))
+        birth_month = int(date_c2.number_input(
+            "월",
+            min_value=1,
+            max_value=12,
+            step=1,
+            key=month_key,
+        ))
+
+        last_day = calendar.monthrange(birth_year, birth_month)[1]
+        if int(st.session_state[day_key]) > last_day:
+            st.session_state[day_key] = last_day
+
+        birth_day = int(date_c3.number_input(
+            "일",
+            min_value=1,
+            max_value=last_day,
+            step=1,
+            key=day_key,
+        ))
+        birth_date = dt.date(birth_year, birth_month, birth_day)
+        birth_date_is_valid = birth_date <= dt.date.today()
+        if not birth_date_is_valid:
+            st.error("생년월일은 오늘 이후로 입력할 수 없습니다.")
         time_str = st.text_input("생시", def_time)
         basis = st.radio("기준", ["표준시 (현대)", "LMT (옛날/지역시)"], index=0 if "표준" in def_basis else 1)
         
@@ -460,16 +508,22 @@ def main():
         
         c1, c2 = st.columns(2)
         if c1.button("🔥 명식 뽑기", type="primary"):
-            st.session_state.is_calculated = True
-            reset_luck_view()
-            st.rerun()
+            if birth_date_is_valid:
+                st.session_state.is_calculated = True
+                reset_luck_view()
+                st.rerun()
+            else:
+                st.error("생년월일을 다시 확인해 주세요.")
             
         if c2.button("💾 저장"):
-            new_row = {"이름": name, "성별": gender, "생년월일": birth_date, "생시": time_str, "시각기준": basis, "도시": place, "위도": lat, "경도": lon}
-            save_record(new_row, user_email)
-            st.session_state.db = load_db(user_email)
-            st.toast(f"내 금고에 안전하게 저장됨: {name}")
-            st.rerun()
+            if birth_date_is_valid:
+                new_row = {"이름": name, "성별": gender, "생년월일": birth_date, "생시": time_str, "시각기준": basis, "도시": place, "위도": lat, "경도": lon}
+                save_record(new_row, user_email)
+                st.session_state.db = load_db(user_email)
+                st.toast(f"내 금고에 안전하게 저장됨: {name}")
+                st.rerun()
+            else:
+                st.error("생년월일을 다시 확인해 주세요.")
 
         if selected_profile != "(선택 안함)" and st.button("🗑️ 삭제"):
             delete_record(selected_profile, user_email)
