@@ -1,8 +1,7 @@
-streamlit
+streamlit==1.61.1
+requests
 timezonefinder
 pyswisseph
-requests
 pandas
-tzdata
 firebase-admin
 streamlit-oauth
