@@ -224,20 +224,37 @@ def utc_from_jd_ut(jd_ut: float) -> dt.datetime:
 def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
     b_time = parse_hms(time_str)
     naive = dt.datetime.combine(birth_date, b_time)
-    
+
+    # Python datetime은 서기 0년을 표현하지 못합니다. 서기 1년 1월 1일의
+    # 이른 시각을 UTC로 환산하면 전년으로 넘어갈 수 있으므로, 여기서는
+    # datetime.astimezone 대신 Swiss Ephemeris의 율리우스일로 직접 계산합니다.
+    local_hour = (
+        b_time.hour
+        + b_time.minute / 60.0
+        + b_time.second / 3600.0
+    )
+
     if basis_option.startswith("표준시"):
         tz_str = TF.timezone_at(lat=lat, lng=lon) or "Asia/Seoul"
         local = naive.replace(tzinfo=ZoneInfo(tz_str))
-        utc_dt = local.astimezone(dt.timezone.utc)
+        utc_offset = local.utcoffset() or dt.timedelta(0)
+        utc_hour = local_hour - utc_offset.total_seconds() / 3600.0
     else:
-        utc_dt = naive.replace(tzinfo=dt.timezone.utc) - dt.timedelta(seconds=lon * 240.0)
+        utc_hour = local_hour - lon / 15.0
 
-    jd_ut = jd_ut_from_utc(utc_dt)
+    jd_ut = swe.julday(
+        birth_date.year,
+        birth_date.month,
+        birth_date.day,
+        utc_hour,
+        swe.GREG_CAL,
+    )
     eot_days = swe.time_equ(jd_ut)
-    lat_dt = utc_dt + dt.timedelta(seconds=(lon*240.0 + eot_days*86400.0))
-    
-    birth_utc_for_year = utc_from_jd_ut(jd_ut)
-    y_year = birth_utc_for_year.year
+    lat_jd = jd_ut + lon / 360.0 + eot_days
+    lat_y, lat_m, lat_d, lat_hour = swe.revjul(lat_jd, swe.GREG_CAL)
+
+    utc_y, _, _, _ = swe.revjul(jd_ut, swe.GREG_CAL)
+    y_year = int(utc_y)
     jd_start = swe.julday(y_year, 1, 1, 0.0, swe.GREG_CAL)
     lichun = swe.solcross_ut(315.0, jd_start, swe.FLG_MOSEPH) 
     if jd_ut < lichun: y_year -= 1
@@ -261,12 +278,13 @@ def calculate_saju_data(birth_date, time_str, basis_option, lat, lon, gender):
         m_s = STEMS[(STEMS.index(yin_stem) + m_idx_in_order) % 10]
         m_b = m_branch
 
-    adj_dt = lat_dt + dt.timedelta(days=1) if lat_dt.hour >= 23 else lat_dt
-    jdn = int(math.floor(swe.julday(adj_dt.year, adj_dt.month, adj_dt.day, 0, swe.GREG_CAL) + 0.5))
+    adj_jd = lat_jd + 1.0 if lat_hour >= 23.0 else lat_jd
+    adj_y, adj_m, adj_d, _ = swe.revjul(adj_jd, swe.GREG_CAL)
+    jdn = int(math.floor(swe.julday(adj_y, adj_m, adj_d, 0, swe.GREG_CAL) + 0.5))
     d_idx = (jdn + 49) % 60
     d_s, d_b = STEMS[d_idx % 10], BRANCHES[d_idx % 12]
 
-    minutes = lat_dt.hour * 60 + lat_dt.minute + lat_dt.second/60.0
+    minutes = lat_hour * 60.0
     h_idx_val = int(((minutes + 60) // 120) % 12)
     h_b = BRANCHES[h_idx_val]
     h_s = STEMS[(STEMS.index(D_STEM_TO_ZI_HOUR_STEM[d_s]) + h_idx_val) % 10]
@@ -461,7 +479,7 @@ def main():
         date_c1, date_c2, date_c3 = st.columns([1.4, 1, 1])
         birth_year = int(date_c1.number_input(
             "년",
-            min_value=1800,
+            min_value=1,
             max_value=dt.date.today().year,
             step=1,
             key=year_key,
